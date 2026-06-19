@@ -1,0 +1,21 @@
+{
+    "name": "FishGame",
+    "rootNamespace": "FishGame",
+    "references": [
+        "Google.Protobuf",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem",
+        "FishGame.Proto"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "Google.Protobuf.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

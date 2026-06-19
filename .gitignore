@@ -1,0 +1,42 @@
+# ── Node / React ─────────────────────────────────────────────────────────────
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+
+# ── Environment ───────────────────────────────────────────────────────────────
+.env*
+!.env.example
+
+# ── Go ────────────────────────────────────────────────────────────────────────
+*.exe
+*.exe~
+*.test
+*.out
+/vendor/
+
+# ── .NET / C# ────────────────────────────────────────────────────────────────
+bin/
+obj/
+*.user
+.vs/
+publish/
+
+# ── Unity ────────────────────────────────────────────────────────────────────
+client/unity/Library/
+client/unity/Temp/
+client/unity/Logs/
+client/unity/UserSettings/
+client/unity/.vs/
+client/unity/Builds/
+client/unity/obj/
+*.pidb.meta
+*.pdb.meta
+
+# ── Protobuf generated ────────────────────────────────────────────────────────
+# Go proto files are committed (services/game-server/internal/pb/) so the
+# project builds without needing protoc installed.
+# C# files for Unity are gitignored — Unity imports them via Grpc.Tools NuGet.
+proto/gen/csharp/*.cs

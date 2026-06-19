@@ -1,0 +1,41 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build output
+dist
+build
+out
+bin
+
+# IDE / editor
+.vscode
+.idea
+*.suo
+*.user
+
+# Git
+.git
+.gitignore
+
+# Claude Code
+.claude
+
+# Env files
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Client (không cần trong Docker build context của server)
+client
+
+# Docs
+*.md

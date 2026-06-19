@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Fish Game UI Preview</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#08111F;font-family:'Segoe UI',sans-serif;color:#E8EAF6;padding:24px}
+.scenes{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.scene-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.label{font-size:12px;color:#7986CB;letter-spacing:.08em;text-transform:uppercase}
+.screen{position:relative;overflow:hidden;border-radius:8px;border:1px solid #1E3252}
+
+/* Login scene */
+.login-bg{background:#08111F;width:320px;height:480px;display:flex;align-items:center;justify-content:center}
+.card{background:#0F1E35;border-radius:8px;padding:24px 28px;width:280px}
+.card-title{font-size:22px;font-weight:700;color:#29B6F6;text-align:center;letter-spacing:.06em;margin-bottom:4px}
+.card-sub{font-size:12px;color:#7986CB;text-align:center;margin-bottom:16px}
+.divider{height:1px;background:rgba(255,255,255,.08);margin:0 -4px 16px}
+.field{background:#162640;border-radius:4px;border-left:3px solid #1A6090;height:42px;display:flex;align-items:center;padding:0 12px;margin-bottom:10px}
+.field span{font-size:13px;color:#7986CB;font-style:italic}
+.btn-primary{background:#29B6F6;color:#fff;border-radius:4px;height:44px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;letter-spacing:.04em;margin-top:14px;cursor:pointer}
+.btn-success{background:#43A047;color:#fff;border-radius:4px;height:44px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;letter-spacing:.04em;margin-top:14px}
+.link-btn{text-align:center;font-size:12px;color:#29B6F6;text-decoration:underline;margin-top:10px;cursor:pointer}
+
+/* Lobby scene */
+.lobby-bg{background:#08111F;width:340px;height:480px;display:flex;flex-direction:column}
+.lobby-header{background:#0F1E35;height:52px;display:flex;align-items:center;padding:0 14px;gap:8px;border-bottom:2px solid #29B6F6;flex-shrink:0}
+.h-balance{font-size:15px;font-weight:700;color:#FFD600;flex:1}
+.h-user{font-size:12px;color:#7986CB;flex:1;text-align:center}
+.h-logout{background:#E53935;color:#fff;font-size:11px;font-weight:700;padding:6px 12px;border-radius:4px;cursor:pointer}
+.page-title{padding:10px 14px 6px;font-size:14px;font-weight:700;color:#E8EAF6}
+.room-list{flex:1;overflow:hidden;padding:0 10px;display:flex;flex-direction:column;gap:8px}
+.room-card{background:#0F1E35;border-radius:4px;height:76px;display:flex;align-items:center;padding:0 14px;gap:10px;border-left:3px solid #29B6F6}
+.room-info{flex:1}
+.room-name{font-size:15px;font-weight:700;color:#E8EAF6}
+.room-rtp{font-size:12px;color:#29B6F6;margin-top:2px}
+.room-btn{background:#43A047;color:#fff;font-size:11px;font-weight:700;padding:8px 14px;border-radius:4px;white-space:nowrap;cursor:pointer}
+
+/* Game scene */
+.game-bg{background:linear-gradient(160deg,#0A2540 0%,#062038 60%,#031828 100%);width:340px;height:480px;display:flex;flex-direction:column;position:relative}
+.game-hud{background:rgba(8,17,31,.8);height:52px;display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0}
+.hud-bal{font-size:16px;font-weight:700;color:#FFD600;flex:1}
+.hud-fish{font-size:13px;color:#29B6F6;text-align:center;flex:1}
+.hud-earn{font-size:14px;font-weight:700;color:#43A047;text-align:right;flex:1}
+.game-area{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+.fish{position:absolute;font-size:28px}
+.fish1{top:25%;left:20%}
+.fish2{top:40%;left:55%}
+.fish3{top:60%;left:35%}
+.game-cannon{width:36px;height:36px;background:#29B6F6;border-radius:50%;bottom:80px;right:50%;position:absolute;display:flex;align-items:center;justify-content:center;font-size:18px}
+.game-bottom{position:absolute;bottom:0;left:0;right:0;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 12px}
+.bet-ui{background:rgba(8,17,31,.85);border-radius:4px;height:48px;width:168px;display:flex;align-items:center;padding:0 6px;gap:4px}
+.bet-btn{width:38px;height:38px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;cursor:pointer}
+.bet-minus{background:#FB8C00;color:#fff}
+.bet-plus{background:#43A047;color:#fff}
+.bet-val{flex:1;text-align:center;font-size:16px;font-weight:700;color:#FFD600}
+.sess-ui{background:rgba(8,17,31,.85);border-radius:4px;height:48px;padding:0 12px;display:flex;align-items:center}
+.sess-txt{font-size:11px;color:#7986CB}
+
+/* Overlay card */
+.overlay-bg{background:#08111F;width:320px;height:440px;display:flex;align-items:center;justify-content:center;position:relative}
+.overlay-dim{position:absolute;inset:0;background:rgba(2,5,12,.92);display:flex;align-items:center;justify-content:center}
+.result-card{background:#0F1E35;border-radius:8px;width:260px;padding:22px 24px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.result-title{font-size:20px;font-weight:700;color:#29B6F6;letter-spacing:.06em}
+.result-divider{width:100%;height:1px;background:rgba(255,255,255,.12)}
+.result-row{font-size:16px;color:#43A047}
+.result-row.spend{color:#FB8C00}
+.result-row.balance{color:#E8EAF6;font-size:14px}
+.result-btn{background:#29B6F6;color:#fff;font-weight:700;font-size:14px;padding:12px 32px;border-radius:4px;cursor:pointer;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div style="font-size:11px;color:#7986CB;margin-bottom:20px;letter-spacing:.08em">FISH GAME — UI PREVIEW (dark ocean theme)</div>
+<div class="scenes">
+
+  <!-- LOGIN -->
+  <div class="scene-wrap">
+    <div class="label">Login Scene</div>
+    <div class="screen login-bg">
+      <div class="card">
+        <div class="card-title">FISH GAME</div>
+        <div class="card-sub">Dang nhap tai khoan</div>
+        <div class="divider"></div>
+        <div class="field"><span>Ten dang nhap</span></div>
+        <div class="field"><span>Mat khau</span></div>
+        <div class="btn-primary">DANG NHAP</div>
+        <div class="link-btn">Chua co tai khoan? Dang ky ngay</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOBBY -->
+  <div class="scene-wrap">
+    <div class="label">Lobby Scene</div>
+    <div class="screen lobby-bg">
+      <div class="lobby-header">
+        <div class="h-balance">VND 10,000</div>
+        <div class="h-user">Chao mung, Player1</div>
+        <div class="h-logout">Dang xuat</div>
+      </div>
+      <div class="page-title">Danh sach phong</div>
+      <div class="room-list">
+        <div class="room-card">
+          <div class="room-info">
+            <div class="room-name">Phong Thuong</div>
+            <div class="room-rtp">RTP 95%</div>
+          </div>
+          <div class="room-btn">Vao phong</div>
+        </div>
+        <div class="room-card" style="border-left-color:#43A047">
+          <div class="room-info">
+            <div class="room-name">Phong VIP</div>
+            <div class="room-rtp" style="color:#43A047">RTP 97%</div>
+          </div>
+          <div class="room-btn">Vao phong</div>
+        </div>
+        <div class="room-card" style="border-left-color:#FB8C00">
+          <div class="room-info">
+            <div class="room-name">Phong Master</div>
+            <div class="room-rtp" style="color:#FB8C00">RTP 98%</div>
+          </div>
+          <div class="room-btn">Vao phong</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div class="scene-wrap">
+    <div class="label">Game Scene</div>
+    <div class="screen game-bg">
+      <div class="game-hud">
+        <div class="hud-bal">VND 9,800</div>
+        <div class="hud-fish">Ca: 3</div>
+        <div class="hud-earn">+450</div>
+      </div>
+      <div class="game-area">
+        <div class="fish fish1">🐡</div>
+        <div class="fish fish2">🐟</div>
+        <div class="fish fish3">🦈</div>
+        <div class="game-cannon">🔫</div>
+      </div>
+      <div class="game-bottom">
+        <div class="bet-ui">
+          <div class="bet-btn bet-minus">−</div>
+          <div class="bet-val">100</div>
+          <div class="bet-btn bet-plus">+</div>
+        </div>
+        <div class="sess-ui"><div class="sess-txt">Seat #2 • Ready</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SESSION END OVERLAY -->
+  <div class="scene-wrap">
+    <div class="label">Session End</div>
+    <div class="screen overlay-bg">
+      <div class="overlay-dim">
+        <div class="result-card">
+          <div class="result-title">KET THUC PHIEN</div>
+          <div class="result-divider"></div>
+          <div class="result-row">Thu duoc: +1,200</div>
+          <div class="result-row spend">Chi tieu: 800</div>
+          <div class="result-row balance">So du: 10,400</div>
+          <div class="result-divider"></div>
+          <div class="result-btn">Ve Lobby</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
