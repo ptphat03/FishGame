@@ -7,10 +7,11 @@ A real-time multiplayer fish-shooting game with a microservices backend. Up to 4
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                       Client Layer                       │
-│   React (Web) ──────────── Unity (Mobile) [In Progress] │
-└───────────────┬──────────────────────────────────────────┘
+┌──────────────────────────────────────┐
+│ 
+│            Client Layer       
+│            React (Web)│
+└───────────────┬──────────────────────┘
                 │
         ┌───────┴────────┐
         │                │
