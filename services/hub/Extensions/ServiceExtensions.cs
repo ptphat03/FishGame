@@ -25,6 +25,7 @@ public static class ServiceExtensions
         services.AddScoped<IRoomService, RoomService>();
         services.AddScoped<IFishService, FishService>();
         services.AddScoped<IGameServerNotifier, GameServerNotifier>();
+        services.AddScoped<IAdminService, AdminService>();
         return services;
     }
 

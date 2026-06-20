@@ -1,3 +1,9 @@
+-- name: CloseOrphanedSessions :exec
+UPDATE game_sessions
+SET status = 'finished', ended_at = NOW()
+WHERE user_id = $1
+  AND status = 'active';
+
 -- name: CreateGameSession :one
 INSERT INTO game_sessions (user_id, room_id)
 VALUES ($1, $2)

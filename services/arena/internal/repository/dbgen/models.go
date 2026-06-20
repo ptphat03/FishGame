@@ -33,6 +33,22 @@ type GameSession struct {
 	EndedAt    pgtype.Timestamptz
 }
 
+type RefreshToken struct {
+	ID         int64
+	UserID     int64
+	TokenHash  string
+	ExpiresAt  pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+	IsRevoked  bool
+	DeviceName pgtype.Text
+	IpAddress  pgtype.Text
+}
+
+type Role struct {
+	ID       int32
+	RoleName string
+}
+
 type Room struct {
 	ID          int64
 	Name        string
@@ -51,6 +67,16 @@ type Transaction struct {
 	Type        string
 	Description pgtype.Text
 	CreatedAt   pgtype.Timestamptz
+}
+
+type User struct {
+	ID        int64
+	Username  string
+	Email     string
+	Password  string
+	RoleID    int32
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 }
 
 type Wallet struct {

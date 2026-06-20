@@ -90,12 +90,7 @@ func (r *walletPgRepo) GetOrCreate(ctx context.Context, userID int64, initialBal
 
 func (r *walletPgRepo) StartSession(ctx context.Context, userID, roomID int64) (*models.GameSession, error) {
 	// Đóng các session còn active của user (zombie từ crash/mất mạng trước đó)
-	_, err := r.pool.Exec(ctx,
-		`UPDATE game_sessions SET status = 'finished', ended_at = NOW()
-		 WHERE user_id = $1 AND status = 'active'`,
-		userID,
-	)
-	if err != nil {
+	if err := r.queries.CloseOrphanedSessions(ctx, userID); err != nil {
 		return nil, apperror.Wrap("repository", "walletRepo.StartSession.CleanupOrphans", err)
 	}
 

@@ -9,6 +9,18 @@ import (
 	"context"
 )
 
+const closeOrphanedSessions = `-- name: CloseOrphanedSessions :exec
+UPDATE game_sessions
+SET status = 'finished', ended_at = NOW()
+WHERE user_id = $1
+  AND status = 'active'
+`
+
+func (q *Queries) CloseOrphanedSessions(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, closeOrphanedSessions, userID)
+	return err
+}
+
 const createGameSession = `-- name: CreateGameSession :one
 INSERT INTO game_sessions (user_id, room_id)
 VALUES ($1, $2)

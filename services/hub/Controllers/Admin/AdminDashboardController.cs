@@ -1,24 +1,26 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using FishApi.Data;
+using FishApi.Services;
 
 namespace FishApi.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin")]
 [Authorize(Policy = "AdminOnly")]
-public class AdminDashboardController(PlayerDbContext db) : ControllerBase
+public class AdminDashboardController(IAdminService adminService) : ControllerBase
 {
     [HttpGet("dashboard")]
-    public async Task<IActionResult> Dashboard() =>
-        Ok(new
+    public async Task<IActionResult> Dashboard()
+    {
+        var stats = await adminService.GetDashboardStatsAsync();
+        return Ok(new
         {
             data = new
             {
-                totalUsers = await db.Users.CountAsync(),
-                totalRooms = await db.Rooms.CountAsync(),
-                totalFish  = await db.Fishes.CountAsync(),
+                totalUsers = stats.TotalUsers,
+                totalRooms = stats.TotalRooms,
+                totalFish  = stats.TotalFish,
             }
         });
+    }
 }

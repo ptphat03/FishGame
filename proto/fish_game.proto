@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package fishgame;
 
-option go_package       = "github.com/PhanBaThien/Fish-Game/services/game-server/internal/pb;fishgamepb";
+option go_package       = "github.com/ptphat03/Fish-Game/services/game-server/internal/pb;fishgamepb";
 option csharp_namespace = "FishGame.Proto";
 
 // ─── Client → Server ─────────────────────────────────────────────────────────
