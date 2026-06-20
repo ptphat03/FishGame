@@ -18,10 +18,8 @@ export default function GamePage() {
   const { coins, score, setCurrentRoom, resetGame } = useGameStore()
   const { balance, fetchWallet } = useWalletStore()
 
-  // ── Bet selection ──────────────────────────────────────────────────────────
   const [selectedBet, setSelectedBet] = useState<number>(BET_OPTIONS[0])
 
-  // ── Data fetching ──────────────────────────────────────────────────────────
   const { data: room, isLoading: roomLoading, isError: roomError } = useQuery({
     queryKey: ['room', roomId],
     queryFn: () => roomsApi.get(roomId),
@@ -33,7 +31,6 @@ export default function GamePage() {
     queryFn: fishApi.list,
   })
 
-  // ── WebSocket (tự động join_room khi connect, leave_room khi unmount) ──────
   const {
     status: wsStatus,
     seatId,
@@ -47,20 +44,15 @@ export default function GamePage() {
     onBroadcastKillRef,
   } = useGameSocket(!isNaN(roomId) ? roomId : null)
 
-  // Ref để GameCanvas expose confirmFishDeath; hook gọi nó khi server confirms kill
   const confirmDeathRef = useRef<((instanceId: string) => void) | null>(null)
-
-  // Ref để GameCanvas expose addFishFromServer; hook gọi nó khi server báo spawn_fish
   const spawnFishRef = useRef<((payload: any) => void) | null>(null)
   const broadcastShootRef = useRef<((payload: any) => void) | null>(null)
   const broadcastKillRef = useRef<((instanceId: string) => void) | null>(null)
 
-  // ── Game state setup ───────────────────────────────────────────────────────
   useEffect(() => {
     if (room) setCurrentRoom(room)
   }, [room, setCurrentRoom])
 
-  // Reset coins/score mỗi khi roomId thay đổi (bao gồm lần mount đầu)
   useEffect(() => {
     resetGame()
   }, [roomId, resetGame])
@@ -71,26 +63,20 @@ export default function GamePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ── Ref để đọc latest balance/selectedBet trong callback mà không recreate ──
   const balanceRef = useRef(balance)
   const selectedBetRef = useRef(selectedBet)
   useEffect(() => { balanceRef.current = balance }, [balance])
   useEffect(() => { selectedBetRef.current = selectedBet }, [selectedBet])
 
-  // ── Canvas callbacks → WS ─────────────────────────────────────────────────
-  // Dùng ref thay vì state trong deps → handleShot không bị recreate khi balance thay đổi
-  // → GameScene không bị dispose/recreate mỗi khi bắn
   const handleShot = useCallback(
     (x: number, y: number, angle: number): boolean => {
       const bal = balanceRef.current
       const bet = selectedBetRef.current
-      if (bal !== null && bal < bet) {
-        return false // GameScene sẽ không push bullet
-      }
+      if (bal !== null && bal < bet) return false
       sendShoot(x, y, angle, bet)
       return true
     },
-    [sendShoot], // ← không còn balance/selectedBet trong deps
+    [sendShoot],
   )
 
   const handleHitFish = useCallback(
@@ -98,8 +84,6 @@ export default function GamePage() {
     [sendHitFish],
   )
 
-  // Kết nối onFishKilledRef (từ hook) → confirmDeathRef (vào GameCanvas)
-  // Dùng useEffect để gán ref sau khi confirmDeathRef sẵn sàng
   useEffect(() => {
     onFishKilledRef.current = (instanceId: string) => {
       confirmDeathRef.current?.(instanceId)
@@ -108,32 +92,25 @@ export default function GamePage() {
 
   useEffect(() => {
     if (onFishSpawnRef) {
-      onFishSpawnRef.current = (payload: any) => {
-        spawnFishRef.current?.(payload)
-      }
+      onFishSpawnRef.current = (payload: any) => { spawnFishRef.current?.(payload) }
     }
     if (onBroadcastShootRef) {
-      onBroadcastShootRef.current = (payload: any) => {
-        broadcastShootRef.current?.(payload)
-      }
+      onBroadcastShootRef.current = (payload: any) => { broadcastShootRef.current?.(payload) }
     }
     if (onBroadcastKillRef) {
-      onBroadcastKillRef.current = (instanceId: string) => {
-        broadcastKillRef.current?.(instanceId)
-      }
+      onBroadcastKillRef.current = (instanceId: string) => { broadcastKillRef.current?.(instanceId) }
     }
   }, [onFishSpawnRef, onBroadcastShootRef, onBroadcastKillRef])
 
-  // ── Error / invalid states ─────────────────────────────────────────────────
   const isLoading = roomLoading || fishLoading
   const isError = roomError || fishError
 
   if (isNaN(roomId)) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-400 text-lg font-medium">Invalid room ID</p>
-          <button onClick={() => navigate('/lobby')} className="mt-4 text-cyan-400 underline">Back to Lobby</button>
+          <p className="text-red-400 text-sm font-medium">Invalid room ID</p>
+          <button onClick={() => navigate('/lobby')} className="mt-3 text-xs text-blue-400 underline">Back to Lobby</button>
         </div>
       </div>
     )
@@ -141,13 +118,12 @@ export default function GamePage() {
 
   if (isError) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <span className="text-5xl mb-4 block">🌊</span>
-          <p className="text-red-400 text-lg font-medium mb-2">Failed to load game data</p>
+          <p className="text-red-400 text-sm font-medium mb-4">Failed to load game data</p>
           <button
             onClick={() => navigate('/lobby')}
-            className="mt-4 px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-medium"
+            className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
           >
             Back to Lobby
           </button>
@@ -157,8 +133,7 @@ export default function GamePage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900 overflow-hidden">
-      {/* Canvas */}
+    <div className="fixed inset-0 bg-gray-900 overflow-hidden">
       {!isLoading && room && fishList && (
         <GameCanvas
           room={room}
@@ -174,33 +149,32 @@ export default function GamePage() {
         />
       )}
 
-      {/* Loading */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-white/60 text-lg">Loading game...</p>
+            <div className="w-12 h-12 border-2 border-blue-500/30 border-t-blue-400 rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-gray-400 text-sm">Loading game...</p>
           </div>
         </div>
       )}
 
-      {/* Disconnect overlay — hiện khi WS mất kết nối sau khi đã connect */}
+      {/* Disconnect overlay */}
       {wsStatus === 'disconnected' && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="text-center px-8 py-8 rounded-2xl bg-slate-800 border border-red-500/30 shadow-2xl max-w-sm mx-4">
-            <div className="w-14 h-14 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="text-center px-8 py-7 rounded-xl bg-gray-800 border border-white/[0.07] shadow-2xl max-w-sm mx-4">
+            <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M18.364 5.636a9 9 0 010 12.728M15.536 8.464a5 5 0 010 7.072M6.343 17.657a9 9 0 010-12.728M8.464 15.536a5 5 0 010-7.072M12 12h.01" />
               </svg>
             </div>
-            <h3 className="text-white font-bold text-lg mb-1">Mất kết nối</h3>
-            <p className="text-white/50 text-sm mb-6">
+            <h3 className="text-gray-100 font-semibold mb-1.5">Mất kết nối</h3>
+            <p className="text-gray-400 text-sm mb-5">
               Kết nối đến server bị gián đoạn. Ván chơi đã được lưu lại.
             </p>
             <button
               onClick={() => navigate('/lobby')}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-semibold hover:opacity-90 transition-opacity"
+              className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
             >
               Về Lobby
             </button>
@@ -212,23 +186,21 @@ export default function GamePage() {
       <div className="absolute inset-0 pointer-events-none">
         {/* Top bar */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-black/40 backdrop-blur border border-white/10">
-            <span className="text-lg">🏠</span>
-            <span className="text-white font-semibold text-sm">{room?.name ?? 'Loading...'}</span>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/50 backdrop-blur border border-white/[0.08]">
+            <span className="text-white/80 font-medium text-sm">{room?.name ?? '...'}</span>
           </div>
 
-          {/* WS status indicator */}
           <div className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${wsStatus === 'connected'
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+            ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
             : wsStatus === 'connecting'
-              ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
-              : 'bg-red-500/10 border-red-500/30 text-red-400'
+              ? 'bg-yellow-500/10 border-yellow-500/25 text-yellow-400'
+              : 'bg-red-500/10 border-red-500/25 text-red-400'
             }`}>
             {wsStatus === 'connected' ? '● Live' : wsStatus === 'connecting' ? '◌ Connecting...' : '○ Offline'}
           </div>
 
           <button
-            className="pointer-events-auto px-4 py-2 rounded-xl bg-black/40 backdrop-blur border border-white/10 text-white/70 hover:text-white hover:border-white/30 text-sm font-medium transition-all flex items-center gap-1.5"
+            className="pointer-events-auto flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black/50 backdrop-blur border border-white/[0.08] text-white/70 hover:text-white text-sm transition-colors"
             onClick={() => navigate('/lobby')}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -241,25 +213,24 @@ export default function GamePage() {
         {/* Bottom HUD */}
         <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between px-4 pb-4">
           {/* Ví */}
-          <div className="flex flex-col items-center gap-1 px-5 py-3 rounded-2xl bg-black/50 backdrop-blur border border-yellow-500/20">
-            <span className="text-2xl">🪙</span>
-            <span className="text-yellow-400 font-extrabold text-2xl leading-none tabular-nums">
+          <div className="flex flex-col items-center gap-1 px-4 py-3 rounded-xl bg-black/50 backdrop-blur border border-white/[0.08]">
+            <span className="text-xs text-white/40 uppercase tracking-wider">Ví</span>
+            <span className="text-amber-400 font-bold text-xl tabular-nums">
               {balance !== null ? balance.toLocaleString() : '...'}
             </span>
-            <span className="text-white/40 text-xs uppercase tracking-wider">Ví</span>
           </div>
 
           {/* Chọn đạn */}
-          <div className="flex flex-col items-center gap-2 px-4 py-3 rounded-2xl bg-black/50 backdrop-blur border border-orange-500/20 pointer-events-auto">
-            <span className="text-white/40 text-xs uppercase tracking-wider">Chọn đạn</span>
+          <div className="flex flex-col items-center gap-2 px-4 py-3 rounded-xl bg-black/50 backdrop-blur border border-white/[0.08] pointer-events-auto">
+            <span className="text-xs text-white/40 uppercase tracking-wider">Chọn đạn</span>
             <div className="flex gap-1.5">
               {BET_OPTIONS.map((bet) => (
                 <button
                   key={bet}
                   onClick={() => setSelectedBet(bet)}
-                  className={`w-12 h-8 rounded-lg text-sm font-bold transition-all ${selectedBet === bet
-                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30 scale-110'
-                    : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                  className={`w-11 h-8 rounded-lg text-sm font-medium transition-all ${selectedBet === bet
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white/10 text-white/60 hover:bg-white/15 hover:text-white'
                     }`}
                 >
                   {bet}
@@ -268,34 +239,27 @@ export default function GamePage() {
             </div>
           </div>
 
-          {/* Thu nhập ván này */}
-          <div className="flex flex-col items-center gap-1 px-5 py-3 rounded-2xl bg-black/50 backdrop-blur border border-emerald-500/20">
-            <span className="text-2xl">💰</span>
-            <span className="text-emerald-400 font-extrabold text-2xl leading-none tabular-nums">
-              +{coins.toLocaleString()}
-            </span>
-            <span className="text-white/40 text-xs uppercase tracking-wider">Ván này</span>
+          {/* Thu nhập */}
+          <div className="flex flex-col items-center gap-1 px-4 py-3 rounded-xl bg-black/50 backdrop-blur border border-white/[0.08]">
+            <span className="text-xs text-white/40 uppercase tracking-wider">Ván này</span>
+            <span className="text-emerald-400 font-bold text-xl tabular-nums">+{coins.toLocaleString()}</span>
           </div>
 
           {/* Cá bắn hạ */}
-          <div className="flex flex-col items-center gap-1 px-5 py-3 rounded-2xl bg-black/50 backdrop-blur border border-cyan-500/20">
-            <span className="text-2xl">🎯</span>
-            <span className="text-cyan-400 font-extrabold text-2xl leading-none tabular-nums">{score}</span>
-            <span className="text-white/40 text-xs uppercase tracking-wider">Cá bắn</span>
+          <div className="flex flex-col items-center gap-1 px-4 py-3 rounded-xl bg-black/50 backdrop-blur border border-white/[0.08]">
+            <span className="text-xs text-white/40 uppercase tracking-wider">Cá bắn</span>
+            <span className="text-blue-400 font-bold text-xl tabular-nums">{score}</span>
           </div>
         </div>
 
-
-        {/* Toast lỗi WS (INSUFFICIENT_BALANCE, INVALID_BET...) */}
         {lastError && (
-          <div className="absolute bottom-32 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-xl bg-red-500/90 backdrop-blur text-white text-sm font-semibold shadow-lg pointer-events-none animate-fade-in">
+          <div className="absolute bottom-32 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-red-500/90 backdrop-blur text-white text-sm font-medium shadow-lg pointer-events-none">
             ⚠️ {lastError.message}
           </div>
         )}
 
-        {/* Controls hint */}
         <div className="absolute top-1/2 right-4 -translate-y-1/2 text-right">
-          <div className="px-3 py-2 rounded-xl bg-black/30 backdrop-blur border border-white/5 text-white/25 text-xs space-y-1">
+          <div className="px-3 py-2 rounded-lg bg-black/30 backdrop-blur border border-white/[0.05] text-white/25 text-xs space-y-1">
             <p>Click to shoot</p>
             <p>Aim with mouse</p>
           </div>

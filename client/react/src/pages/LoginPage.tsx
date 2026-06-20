@@ -16,11 +16,9 @@ export default function LoginPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const fetchWallet = useWalletStore((s) => s.fetchWallet)
 
-  // Login fields
   const [loginUsername, setLoginUsername] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
 
-  // Register fields
   const [regUsername, setRegUsername] = useState('')
   const [regEmail, setRegEmail] = useState('')
   const [regPassword, setRegPassword] = useState('')
@@ -32,12 +30,9 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const res = await authApi.login({ username: loginUsername, password: loginPassword })
-      // Lưu token trước để apiClient có thể gọi /me
       setToken(res.access_token)
-      // Lấy thông tin user qua /me (vì login chỉ trả access_token)
       const user = await authApi.me()
       setAuth(user, res.access_token)
-      // Fetch wallet ngay sau login để Navbar hiển thị balance
       fetchWallet()
       navigate('/lobby', { replace: true })
     } catch (err) {
@@ -73,169 +68,127 @@ export default function LoginPage() {
     setSuccessMsg(null)
   }
 
+  const inputCls = 'w-full rounded-lg bg-gray-700 border border-gray-600 text-gray-100 placeholder-gray-500 px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all'
+  const labelCls = 'block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1.5'
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-900 relative overflow-hidden">
-      {/* Background bubbles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(12)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full bg-cyan-500/10 animate-float"
-            style={{
-              width: `${20 + (i * 17) % 60}px`,
-              height: `${20 + (i * 17) % 60}px`,
-              left: `${(i * 8.33) % 100}%`,
-              bottom: `${(i * 15) % 60}%`,
-              animationDelay: `${i * 0.4}s`,
-              animationDuration: `${3 + (i % 3)}s`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Gradient overlays */}
-      <div className="absolute top-0 left-0 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-teal-600/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
-
-      <div className="relative w-full max-w-md mx-4">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <span className="text-6xl">🐟</span>
-          <h1 className="mt-3 text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
-            Fish Game
-          </h1>
-          <p className="text-white/40 mt-1 text-sm">Multiplayer 3D Fishing Adventure</p>
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-900">
+      <div className="w-full max-w-4xl mx-4 flex rounded-xl border border-white/[0.07] overflow-hidden shadow-2xl">
+        {/* Left panel */}
+        <div className="hidden md:flex flex-col justify-center bg-gray-800 px-10 py-12 w-2/5 border-r border-white/[0.07]">
+          <div className="flex items-center gap-2.5 mb-8">
+            <span className="text-2xl">🐟</span>
+            <span className="text-lg font-semibold text-gray-100">Fish Game</span>
+          </div>
+          <h2 className="text-2xl font-semibold text-gray-100 leading-snug mb-3">
+            Shoot fish,<br />earn coins,<br />top the board.
+          </h2>
+          <p className="text-sm text-gray-400 leading-relaxed mb-8">
+            Up to 4 players per room. Join any time.
+          </p>
+          <div className="flex flex-col gap-3">
+            {['Free to join', 'Instant sessions', 'Live leaderboard'].map((txt) => (
+              <div key={txt} className="flex items-center gap-2.5 text-sm text-gray-400">
+                <span className="text-emerald-400">✓</span>
+                {txt}
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Card */}
-        <div className="rounded-2xl border border-white/20 bg-white/5 backdrop-blur-md p-8 shadow-2xl shadow-black/40">
-          {/* Tabs */}
-          <div className="flex rounded-xl bg-white/5 p-1 mb-6">
+        {/* Right panel — form */}
+        <div className="flex-1 bg-gray-900 px-8 py-10">
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2 mb-6 md:hidden">
+            <span className="text-xl">🐟</span>
+            <span className="text-base font-semibold text-gray-100">Fish Game</span>
+          </div>
+
+          {/* Tab toggle */}
+          <div className="flex bg-gray-800 rounded-lg p-1 mb-7">
             {(['login', 'register'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => switchTab(tab)}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold capitalize transition-all duration-200 ${
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium capitalize transition-all ${
                   activeTab === tab
-                    ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-lg'
-                    : 'text-white/50 hover:text-white/80'
+                    ? 'bg-gray-700 text-gray-100 border border-white/[0.08]'
+                    : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
-                {tab}
+                {tab === 'login' ? 'Login' : 'Register'}
               </button>
             ))}
           </div>
 
           {/* Messages */}
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 text-sm">
+            <div className="mb-5 p-3 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 text-sm">
               {error}
             </div>
           )}
           {successMsg && (
-            <div className="mb-4 p-3 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-sm">
+            <div className="mb-5 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-sm">
               {successMsg}
             </div>
           )}
 
-          {/* Login Form */}
           {activeTab === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-1.5">
-                  Username
-                </label>
+                <label className={labelCls}>Username</label>
                 <input
                   type="text"
                   required
                   value={loginUsername}
                   onChange={(e) => setLoginUsername(e.target.value)}
                   placeholder="Enter your username"
-                  className="w-full rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/25 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/30 transition-all"
+                  className={inputCls}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-1.5">
-                  Password
-                </label>
+                <label className={labelCls}>Password</label>
                 <input
                   type="password"
                   required
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/25 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/30 transition-all"
+                  className={inputCls}
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all duration-200 shadow-lg shadow-cyan-500/20 mt-2"
+                className="w-full py-2.5 mt-2 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
               >
-                {loading ? 'Logging in...' : 'Login'}
+                {loading ? 'Logging in...' : 'Sign in'}
               </button>
             </form>
           )}
 
-          {/* Register Form */}
           {activeTab === 'register' && (
             <form onSubmit={handleRegister} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-1.5">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={regUsername}
-                  onChange={(e) => setRegUsername(e.target.value)}
-                  placeholder="Choose a username"
-                  className="w-full rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/25 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/30 transition-all"
-                />
+                <label className={labelCls}>Username</label>
+                <input type="text" required value={regUsername} onChange={(e) => setRegUsername(e.target.value)} placeholder="Choose a username" className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-1.5">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={regEmail}
-                  onChange={(e) => setRegEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  className="w-full rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/25 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/30 transition-all"
-                />
+                <label className={labelCls}>Email</label>
+                <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="your@email.com" className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-1.5">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  placeholder="Choose a password"
-                  className="w-full rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/25 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/30 transition-all"
-                />
+                <label className={labelCls}>Password</label>
+                <input type="password" required value={regPassword} onChange={(e) => setRegPassword(e.target.value)} placeholder="Choose a password" className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-1.5">
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={regConfirm}
-                  onChange={(e) => setRegConfirm(e.target.value)}
-                  placeholder="Repeat your password"
-                  className="w-full rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/25 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/30 transition-all"
-                />
+                <label className={labelCls}>Confirm Password</label>
+                <input type="password" required value={regConfirm} onChange={(e) => setRegConfirm(e.target.value)} placeholder="Repeat your password" className={inputCls} />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all duration-200 shadow-lg shadow-cyan-500/20 mt-2"
+                className="w-full py-2.5 mt-2 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
               >
                 {loading ? 'Creating account...' : 'Create Account'}
               </button>
