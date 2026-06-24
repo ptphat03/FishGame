@@ -16,11 +16,17 @@ export class BulletEntity {
   constructor(startX: number, startY: number, targetX: number, targetY: number) {
     const dx = targetX - startX
     const dy = targetY - startY
-    const dist = Math.sqrt(dx * dx + dy * dy) || 1
+    
+    // Chuẩn hoá theo tỉ lệ 16:9 để đạn bắn ngang (Player 2,3) bay nhanh tương đương đạn bắn dọc (Player 0,1)
+    const ASPECT_RATIO = 16 / 9
+    const du = dx / ASPECT_RATIO
+    const dv = dy
+    const dist = Math.sqrt(du * du + dv * dv) || 1
+    
     this.x = startX
     this.y = startY
-    this.vx = (dx / dist) * BULLET_SPEED
-    this.vy = (dy / dist) * BULLET_SPEED
+    this.vx = (du / dist) * BULLET_SPEED * ASPECT_RATIO
+    this.vy = (dv / dist) * BULLET_SPEED
   }
 
   update(dt: number) {

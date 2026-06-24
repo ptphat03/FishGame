@@ -12,6 +12,7 @@ type WsOutMsg =
   | { type: 'leave_room'; payload: null }
   | { type: 'ping'; payload: null }
   | { type: 'client_ready'; payload: {} }
+  | { type: 'request_resync'; payload: null }
 
 interface WsInMsg {
   type: string
@@ -24,6 +25,7 @@ interface SessionStartedPayload { session_id: number; seat_id: number }
 interface SessionEndedPayload { session: unknown; wallet: { balance: number } }
 interface BroadcastShootPayload { seat_id: number; x: number; y: number; angle: number }
 interface BroadcastKillPayload { instance_id: string }
+interface SyncBoardPayload { fishes: any[] }
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export type WsStatus = 'idle' | 'connecting' | 'connected' | 'disconnected'
@@ -43,6 +45,7 @@ interface UseGameSocketReturn {
   onFishSpawnRef: { current: ((payload: any) => void) | null }
   onBroadcastShootRef: { current: ((payload: BroadcastShootPayload) => void) | null }
   onBroadcastKillRef: { current: ((instanceId: string) => void) | null }
+  sendRequestResync: () => void
 }
 
 export function useGameSocket(roomId: number | null): UseGameSocketReturn {
@@ -89,9 +92,21 @@ export function useGameSocket(roomId: number | null): UseGameSocketReturn {
     }
   }, [])
 
+  const sendRequestResync = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'request_resync', payload: null }))
+    }
+  }, [])
+
   // ── Message handler ──────────────────────────────────────────────────────────
   const handleMessage = useCallback(
     (msg: WsInMsg) => {
+      if (document.hidden) {
+        if (msg.type === 'spawn_fish' || msg.type === 'broadcast_shoot' || msg.type === 'broadcast_kill') {
+          return
+        }
+      }
+
       console.log('[WS IN]', msg.type, msg.payload)
       switch (msg.type) {
         case 'session_started': {
@@ -141,6 +156,12 @@ export function useGameSocket(roomId: number | null): UseGameSocketReturn {
         case 'broadcast_kill': {
           const p = msg.payload as unknown as BroadcastKillPayload
           onBroadcastKillRef.current?.(p.instance_id)
+          break
+        }
+        case 'sync_board': {
+          const p = msg.payload as unknown as SyncBoardPayload
+          // Gọi spawnFish cho từng con cá trong mảng
+          p.fishes.forEach(fish => onFishSpawnRef.current?.(fish))
           break
         }
         default:
@@ -194,5 +215,5 @@ export function useGameSocket(roomId: number | null): UseGameSocketReturn {
     }
   }, [accessToken, roomId, handleMessage])
 
-  return { status, sessionId, seatId, lastError, sendShoot, sendHitFish, sendClientReady, onFishKilledRef, onFishSpawnRef, onBroadcastShootRef, onBroadcastKillRef }
+  return { status, sessionId, seatId, lastError, sendShoot, sendHitFish, sendClientReady, sendRequestResync, onFishKilledRef, onFishSpawnRef, onBroadcastShootRef, onBroadcastKillRef }
 }

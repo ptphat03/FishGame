@@ -165,6 +165,8 @@ func (c *Client) handleMessage(raw []byte) {
 		c.handleHitFish(p)
 	case "leave_room":
 		c.handleLeaveRoom()
+	case "request_resync":
+		c.handleRequestResync()
 	case "ping":
 		c.handlePing()
 	default:
@@ -233,6 +235,13 @@ func (c *Client) handleClientReady() {
 		return
 	}
 	c.hub.SyncFishesToClient(c.roomID, c)
+}
+
+func (c *Client) handleRequestResync() {
+	if c.sessionID == 0 || c.roomID == 0 {
+		return
+	}
+	c.hub.SyncBoardToClient(c.roomID, c)
 }
 
 func (c *Client) handleShoot(p ShootPayload) {

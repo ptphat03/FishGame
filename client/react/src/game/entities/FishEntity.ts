@@ -25,8 +25,6 @@ export class FishEntity {
   public direction: number = 1;
   private baseY: number = 0;
 
-  private amplitude: number
-  private frequency: number
   private speed: number
   private color: { body: string; shade: string }
   readonly size: number
@@ -40,8 +38,6 @@ export class FishEntity {
     this.killProb = killProb
     this.payload = payload
 
-    this.amplitude = 14 + Math.random() * 22
-    this.frequency = 0.4 + Math.random() * 0.9
     this.speed = fishData.speed * 55 + 25
     // Lấy màu sắc dựa trên ID của cá để mỗi loại cá có 1 màu cố định
     // Dùng chia lấy dư (%) phòng trường hợp số loại cá nhiều hơn số màu trong PALETTE
@@ -50,7 +46,7 @@ export class FishEntity {
 
     // size grows with health (log scale), clamped 20-55
     this.size = Math.min(55, Math.max(20, 18 + Math.log(fishData.health + 1) * 9))
-    this.initPath(canvasH);
+    this.initPath();
 
     // Tính toán timeAlive ban đầu (nếu cá được server sinh ra từ trước)
     const now = Date.now()
@@ -60,52 +56,54 @@ export class FishEntity {
     this.updatePosition(canvasW, canvasH)
   }
 
-  private initPath(h: number) {
-    switch (this.payload.path_id) {
-      case 1: // Bay từ trái qua phải (Đường thẳng)
-        this.direction = 1;
-        this.baseY = h * 0.3; // Ví dụ: bơi ở độ cao 30% màn hình
-        this.amplitude = 0; // Không lượn sóng
-        break;
-      case 2: // Bay từ phải qua trái lượn sóng (Hình Sin)
-        this.direction = -1;
-        this.baseY = h * 0.5;
-        this.amplitude = 60;
-        this.frequency = 0.8;
-        break;
-      case 3: // Bay từ trái chéo xuống phải
-        this.direction = 1;
-        this.baseY = h * 0.1;
-        this.amplitude = 0;
-        this.speed = this.speed * 1.5; // Path này cá bơi nhanh hơn
-        break;
-      default: // Mặc định như cũ
-        this.direction = 1;
-        this.baseY = h / 2;
-        this.amplitude = 20;
-        this.frequency = 1;
+  private initPath() {
+    // Dùng mã instanceId để tạo seed random đồng bộ giữa các client (0.0 -> 1.0)
+    let seed = 0;
+    for (let i = 0; i < this.instanceId.length; i++) {
+      seed = (seed + this.instanceId.charCodeAt(i)) % 100;
     }
+    const syncRand = seed / 100;
+
+    // Phân tán cá dọc theo trục Y một chút để không bị dính chùm vào nhau (±30% màn hình)
+    this.baseY = (syncRand - 0.5) * 0.6;
+  }
+
+  private getPositionAtTime(t: number, canvasW: number, canvasH: number): { x: number; y: number } {
+    let x = 0, y = 0;
+    
+    const dist = this.speed * t;
+    const dx = dist * (canvasW / Math.sqrt(canvasW*canvasW + canvasH*canvasH));
+    const dy = dist * (canvasH / Math.sqrt(canvasW*canvasW + canvasH*canvasH));
+    
+    const offsetY = this.baseY * canvasH;
+
+    switch (this.payload.path_id) {
+      case 1: // Bay xéo từ trên-trái xuống dưới-phải
+        x = -80 + dx;
+        y = offsetY - 80 + dy;
+        break;
+      case 2: // Bay xéo từ dưới-trái lên trên-phải
+        x = -80 + dx;
+        y = canvasH + 80 + offsetY - dy;
+        break;
+      case 3: // Bay xéo từ trên-phải xuống dưới-trái
+        x = canvasW + 80 - dx;
+        y = offsetY - 80 + dy;
+        break;
+      case 4: // Bay xéo từ dưới-phải lên trên-trái
+      default:
+        x = canvasW + 80 - dx;
+        y = canvasH + 80 + offsetY - dy;
+        break;
+    }
+
+    return { x, y };
   }
 
   private updatePosition(canvasW: number, canvasH: number) {
-    // Tính toán quỹ đạo bay tuyệt đối dựa theo thời gian sống (timeAlive) và PathID
-    switch (this.payload.path_id) {
-      case 1:
-        this.x = -80 + this.speed * this.timeAlive;
-        this.y = this.baseY;
-        break;
-      case 2:
-        this.x = canvasW + 80 - this.speed * this.timeAlive;
-        this.y = this.baseY + Math.sin(this.timeAlive * this.frequency) * this.amplitude;
-        break;
-      case 3: // Đường chéo (y tăng dần theo x)
-        this.x = -80 + this.speed * this.timeAlive;
-        this.y = this.baseY + (this.x / canvasW) * (canvasH * 0.6);
-        break;
-      default:
-        this.x = -80 + this.speed * this.timeAlive;
-        this.y = this.baseY + Math.sin(this.timeAlive * this.frequency) * this.amplitude;
-    }
+    const pos = this.getPositionAtTime(this.timeAlive, canvasW, canvasH);
+    this.x = pos.x;
+    this.y = pos.y;
   }
 
   isExpired(): boolean {
@@ -148,7 +146,7 @@ export class FishEntity {
     }
   }
 
-  draw(ctx: CanvasRenderingContext2D, worldToScreen?: CoordTransformer, isFlipped?: boolean) {
+  draw(ctx: CanvasRenderingContext2D, worldToScreen: CoordTransformer, w: number, h: number) {
     if (this.isDead) return
 
     // Chuyển đổi toạ độ World → Screen
@@ -170,10 +168,19 @@ export class FishEntity {
       ctx.restore()
     }
 
-    // Xác định hướng vẽ: nếu isFlipped thì đảo ngược direction để cá không bơi lùi
-    let drawDirection = this.direction
-    if (isFlipped) drawDirection *= -1
-    if (drawDirection === -1) ctx.scale(-1, 1)
+    // Determine local visual angle dynamically
+    const dt = 0.01
+    const nextPos = this.getPositionAtTime(this.timeAlive + dt, w, h)
+
+    const scrNext = transform(nextPos.x, nextPos.y)
+    const lx = scrNext.x - scr.x
+    const ly = scrNext.y - scr.y
+    const angle = Math.atan2(ly, lx)
+
+    ctx.rotate(angle)
+
+    // Lật ngược bụng cá nếu bơi ngược chiều trục X cục bộ
+    if (lx < 0) ctx.scale(1, -1)
 
     const s = this.size
     const { body, shade } = this.color
@@ -288,6 +295,12 @@ export class FishEntity {
     // Tính tọa độ Y trung tâm cho từng hàng
     const cyBottom = cy
     const cyTop = cy - h - gapY
+
+    ctx.save()
+    
+    // Không cần quay chữ vì CSS canvas luôn nằm ngang và không bị lật
+    ctx.translate(cx, cyTop + (h + gapY) / 2)
+    ctx.translate(-cx, -(cyTop + (h + gapY) / 2))
 
     // ─── VẼ HÀNG TRÊN: TÊN CÁ ────────────────────────────────────────────────
     ctx.fillStyle = 'rgba(0,0,0,0.55)'

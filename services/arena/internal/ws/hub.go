@@ -203,6 +203,36 @@ func (h *Hub) SyncFishesToClient(roomID int64, c *Client) {
 	}
 }
 
+func (h *Hub) SyncBoardToClient(roomID int64, c *Client) {
+	h.mu.RLock()
+	r := h.rooms[roomID]
+	h.mu.RUnlock()
+	if r == nil {
+		return
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	
+	fishes := make([]SpawnFishMsg, 0, len(r.activeFishes))
+	for _, fish := range r.activeFishes {
+		fishes = append(fishes, SpawnFishMsg{
+			InstanceID: fish.InstanceID,
+			FishID:     fish.FishID,
+			PathID:     fish.PathID,
+			SpawnTime:  fish.SpawnTime.UnixMilli(),
+			Duration:   int32(fish.Duration.Seconds()),
+		})
+	}
+	
+	if data := outMsg("sync_board", SyncBoardMsg{Fishes: fishes}); data != nil {
+		select {
+		case c.send <- data:
+		default:
+		}
+	}
+}
+
 // ── GAME LOOP & SPAWN LOGIC ──────────────────────────────────────────────────
 
 // StartGameLoop khởi chạy vòng lặp sinh cá cho phòng

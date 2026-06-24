@@ -88,6 +88,10 @@ type SpawnFishMsg struct {
 	Duration   int32  `json:"duration"`   // seconds
 }
 
+type SyncBoardMsg struct {
+	Fishes []SpawnFishMsg `json:"fishes"`
+}
+
 type BroadcastShootMsg struct {
 	SeatID int     `json:"seat_id"`
 	X      float32 `json:"x"`

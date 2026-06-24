@@ -17,9 +17,11 @@ interface GameCanvasProps {
   onBroadcastShootRef?: React.MutableRefObject<((payload: any) => void) | null>
   // BỔ SUNG: Ref để parent truyền event kill broadcast vào Canvas
   onBroadcastKillRef?: React.MutableRefObject<((instanceId: string) => void) | null>
+  // BỔ SUNG: Ref để parent gọi hàm clearBoard
+  clearBoardRef?: React.MutableRefObject<(() => void) | null>
 }
 
-export default function GameCanvas({ room, fishList, seatId, onHitFish, onShot, onReady, confirmDeathRef, spawnFishRef, onBroadcastShootRef, onBroadcastKillRef }: GameCanvasProps) {
+export default function GameCanvas({ room, fishList, seatId, onHitFish, onShot, onReady, confirmDeathRef, spawnFishRef, onBroadcastShootRef, onBroadcastKillRef, clearBoardRef }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameSceneRef = useRef<GameScene | null>(null)
 
@@ -61,6 +63,9 @@ export default function GameCanvas({ room, fishList, seatId, onHitFish, onShot, 
       if (onBroadcastKillRef) {
         onBroadcastKillRef.current = (instanceId) => scene.confirmFishDeath(instanceId)
       }
+      if (clearBoardRef) {
+        clearBoardRef.current = () => scene.clearBoard()
+      }
       onReady?.()
 
     }, 50)
@@ -73,13 +78,19 @@ export default function GameCanvas({ room, fishList, seatId, onHitFish, onShot, 
       if (spawnFishRef) spawnFishRef.current = null
       if (onBroadcastShootRef) onBroadcastShootRef.current = null
       if (onBroadcastKillRef) onBroadcastKillRef.current = null
+      if (clearBoardRef) clearBoardRef.current = null
     }
   }, [fishList, handleHitFish, handleShot, confirmDeathRef, onBroadcastShootRef, spawnFishRef, room.rtp, seatId])
 
   return (
     <canvas
       ref={canvasRef}
-      style={{ width: '100%', height: '100%', display: 'block', cursor: 'none' }}
+      style={{ 
+        width: '100%', 
+        height: '100%', 
+        display: 'block', 
+        cursor: 'none'
+      }}
     />
   )
 }

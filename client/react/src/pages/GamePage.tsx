@@ -38,6 +38,7 @@ export default function GamePage() {
     sendShoot,
     sendHitFish,
     sendClientReady,
+    sendRequestResync,
     onFishKilledRef,
     onFishSpawnRef,
     onBroadcastShootRef,
@@ -48,6 +49,7 @@ export default function GamePage() {
   const spawnFishRef = useRef<((payload: any) => void) | null>(null)
   const broadcastShootRef = useRef<((payload: any) => void) | null>(null)
   const broadcastKillRef = useRef<((instanceId: string) => void) | null>(null)
+  const clearBoardRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     if (room) setCurrentRoom(room)
@@ -102,6 +104,17 @@ export default function GamePage() {
     }
   }, [onFishSpawnRef, onBroadcastShootRef, onBroadcastKillRef])
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        clearBoardRef.current?.()
+        sendRequestResync()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [sendRequestResync])
+
   const isLoading = roomLoading || fishLoading
   const isError = roomError || fishError
 
@@ -146,6 +159,7 @@ export default function GamePage() {
           spawnFishRef={spawnFishRef}
           onBroadcastShootRef={broadcastShootRef}
           onBroadcastKillRef={broadcastKillRef}
+          clearBoardRef={clearBoardRef}
         />
       )}
 

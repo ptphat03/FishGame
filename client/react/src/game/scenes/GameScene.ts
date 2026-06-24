@@ -66,14 +66,12 @@ export class GameScene {
 
   // ── Hero View ──────────────────────────────────────────────────────────────
   private seatId: number
-  public readonly isFlipped: boolean
   private seatStates = new Map<number, SeatState>()
 
   constructor(options: GameSceneOptions) {
     this.options = options
     this.canvas = options.canvas
     this.seatId = options.seatId
-    this.isFlipped = (this.seatId === 2 || this.seatId === 3)
 
     const ctx = options.canvas.getContext('2d')
     if (!ctx) throw new Error('Cannot get 2D context')
@@ -88,18 +86,43 @@ export class GameScene {
 
   // ── Coordinate Transformers ─────────────────────────────────────────────────
 
-  /** Chuyển đổi toạ độ World → Screen. Nếu isFlipped thì lật 180°. */
+  /** Chuyển đổi toạ độ World → Screen. Do Canvas đã dùng CSS rotate(180deg) nên không cần flip tại đây nữa. */
   worldToScreen = (worldX: number, worldY: number): { x: number; y: number } => {
-    if (this.isFlipped) {
-      return { x: this.canvas.width - worldX, y: this.canvas.height - worldY }
+    const w = this.canvas.width
+    const h = this.canvas.height
+    
+    if (this.seatId === 1) { // Top
+      return { x: w - worldX, y: h - worldY }
+    } else if (this.seatId === 2) { // Left
+      return { 
+        x: worldY * (w / h), 
+        y: h - worldX * (h / w) 
+      }
+    } else if (this.seatId === 3) { // Right
+      return { 
+        x: w - worldY * (w / h), 
+        y: worldX * (h / w) 
+      }
     }
     return { x: worldX, y: worldY }
   }
 
-  /** Chuyển đổi toạ độ Screen → World. Nếu isFlipped thì lật 180°. */
   screenToWorld = (screenX: number, screenY: number): { x: number; y: number } => {
-    if (this.isFlipped) {
-      return { x: this.canvas.width - screenX, y: this.canvas.height - screenY }
+    const w = this.canvas.width
+    const h = this.canvas.height
+
+    if (this.seatId === 1) {
+      return { x: w - screenX, y: h - screenY }
+    } else if (this.seatId === 2) {
+      return {
+        x: (h - screenY) * (w / h),
+        y: screenX * (h / w)
+      }
+    } else if (this.seatId === 3) {
+      return {
+        x: screenY * (w / h),
+        y: (w - screenX) * (h / w)
+      }
     }
     return { x: screenX, y: screenY }
   }
@@ -128,19 +151,36 @@ export class GameScene {
     }
   }
 
-  private getSeatOrigin(seatId: number): { x: number; y: number } {
-    const { width: w, height: h } = this.canvas
+  private absoluteAngleToLocal(angle: number): number {
+    const w = this.canvas.width
+    const h = this.canvas.height
+    
+    const vx = Math.cos(angle)
+    const vy = Math.sin(angle)
+    
+    let lx = vx
+    let ly = vy
+
+    if (this.seatId === 1) {
+      lx = -vx; ly = -vy
+    } else if (this.seatId === 2) {
+      lx = vy * (w / h)
+      ly = -vx * (h / w)
+    } else if (this.seatId === 3) {
+      lx = -vy * (w / h)
+      ly = vx * (h / w)
+    }
+    
+    return Math.atan2(ly, lx)
+  }
+
+  private getAbsoluteSeatOrigin(seatId: number, w: number, h: number): { x: number; y: number } {
     switch (seatId) {
-      case 0:
-        return { x: w * 0.25, y: h }
-      case 1:
-        return { x: w * 0.75, y: h }
-      case 2:
-        return { x: w * 0.25, y: 0 }
-      case 3:
-        return { x: w * 0.75, y: 0 }
-      default:
-        return { x: w / 2, y: h - 55 }
+      case 0: return { x: w / 2, y: h } // Bottom
+      case 1: return { x: w / 2, y: 0 } // Top
+      case 2: return { x: 0, y: h / 2 } // Left
+      case 3: return { x: w, y: h / 2 } // Right
+      default: return { x: w / 2, y: h }
     }
   }
 
@@ -152,7 +192,7 @@ export class GameScene {
     if (payload.seat_id === this.seatId) {
       return
     }
-    const origin = this.getSeatOrigin(payload.seat_id)
+    const origin = this.getAbsoluteSeatOrigin(payload.seat_id, this.canvas.width, this.canvas.height)
     this.setSeatAngle(payload.seat_id, payload.angle)
     this.bullets.push(new BulletEntity(origin.x, origin.y, payload.x, payload.y))
   }
@@ -231,8 +271,8 @@ export class GameScene {
 
     // Chuyển sang World Space để tính cannon angle
     const world = this.screenToWorld(screenX, screenY)
-    const origin = this.getSeatOrigin(this.seatId)
-    this.cannonAngle = Math.atan2(world.y - origin.y, world.x - origin.x)
+    const absOrigin = this.getAbsoluteSeatOrigin(this.seatId, this.canvas.width, this.canvas.height)
+    this.cannonAngle = Math.atan2(world.y - absOrigin.y, world.x - absOrigin.x)
     this.setSeatAngle(this.seatId, this.cannonAngle)
   }
 
@@ -243,7 +283,7 @@ export class GameScene {
 
     // Chuyển sang World Space
     const world = this.screenToWorld(screenX, screenY)
-    const origin = this.getSeatOrigin(this.seatId)
+    const origin = this.getAbsoluteSeatOrigin(this.seatId, this.canvas.width, this.canvas.height)
     const allowed = this.options.onShot?.(world.x, world.y, this.cannonAngle) ?? true
     if (allowed) {
       this.bullets.push(new BulletEntity(origin.x, origin.y, world.x, world.y))
@@ -256,11 +296,17 @@ export class GameScene {
   removeFish(instanceId: string) {
     this.fishEntities = this.fishEntities.filter(f => f.instanceId !== instanceId);
   }
+
+  public clearBoard() {
+    this.fishEntities = []
+    this.bullets = []
+    this.particles = []
+  }
   // ── Game loop ─────────────────────────────────────────────────────────────
 
   private loop = (now: number) => {
     if (this.isDisposed) return
-    const dt = Math.min((now - this.lastTime) / 1000, 0.05)
+    const dt = Math.min((now - this.lastTime) / 1000, 0.1)
     this.lastTime = now
     this.bgTime += dt
 
@@ -331,7 +377,7 @@ export class GameScene {
     this.drawSeabed(ctx, w, h)
 
     // Vẽ cá và đạn qua worldToScreen transformer
-    for (const fish of this.fishEntities) fish.draw(ctx, this.worldToScreen, this.isFlipped)
+    for (const fish of this.fishEntities) fish.draw(ctx, this.worldToScreen, w, h)
     for (const b of this.bullets) b.draw(ctx, this.worldToScreen)
 
     this.drawParticles(ctx)
@@ -375,61 +421,57 @@ export class GameScene {
   }
 
   private drawSeabed(ctx: CanvasRenderingContext2D, w: number, h: number) {
-    if (this.isFlipped) {
-      // Cannon ở trên cùng khi flipped → seabed ở phía trên
-      const sand = ctx.createLinearGradient(0, 0, 0, 65)
-      sand.addColorStop(0, 'rgba(12,45,90,0.85)')
-      sand.addColorStop(1, 'rgba(8,35,75,0)')
-      ctx.fillStyle = sand
-      ctx.fillRect(0, 0, w, 65)
+    // Bottom
+    let sand = ctx.createLinearGradient(0, h - 65, 0, h)
+    sand.addColorStop(0, 'rgba(8,35,75,0)')
+    sand.addColorStop(1, 'rgba(12,45,90,0.85)')
+    ctx.fillStyle = sand
+    ctx.fillRect(0, h - 65, w, 65)
 
-      const positions = [0.06, 0.18, 0.42, 0.68, 0.82, 0.94]
-      for (const p of positions) this.drawSeaweedFlipped(ctx, w * p)
-    } else {
-      const sand = ctx.createLinearGradient(0, h - 65, 0, h)
-      sand.addColorStop(0, 'rgba(8,35,75,0)')
-      sand.addColorStop(1, 'rgba(12,45,90,0.85)')
-      ctx.fillStyle = sand
-      ctx.fillRect(0, h - 65, w, 65)
+    // Top
+    sand = ctx.createLinearGradient(0, 65, 0, 0)
+    sand.addColorStop(0, 'rgba(8,35,75,0)')
+    sand.addColorStop(1, 'rgba(12,45,90,0.85)')
+    ctx.fillStyle = sand
+    ctx.fillRect(0, 0, w, 65)
 
-      const positions = [0.06, 0.18, 0.42, 0.68, 0.82, 0.94]
-      for (const p of positions) this.drawSeaweed(ctx, w * p, h)
-    }
+    // Left
+    sand = ctx.createLinearGradient(65, 0, 0, 0)
+    sand.addColorStop(0, 'rgba(8,35,75,0)')
+    sand.addColorStop(1, 'rgba(12,45,90,0.85)')
+    ctx.fillStyle = sand
+    ctx.fillRect(0, 0, 65, h)
+
+    // Right
+    sand = ctx.createLinearGradient(w - 65, 0, w, 0)
+    sand.addColorStop(0, 'rgba(8,35,75,0)')
+    sand.addColorStop(1, 'rgba(12,45,90,0.85)')
+    ctx.fillStyle = sand
+    ctx.fillRect(w - 65, 0, 65, h)
+
+    const positions = [0.06, 0.18, 0.42, 0.68, 0.82, 0.94]
+    for (const p of positions) this.drawSeaweed(ctx, w * p, h, 1)
+    for (const p of positions) this.drawSeaweed(ctx, w * p, 0, -1)
   }
 
-  private drawSeaweed(ctx: CanvasRenderingContext2D, x: number, h: number) {
+  private drawSeaweed(ctx: CanvasRenderingContext2D, x: number, y: number, dir: number) {
     ctx.save()
     ctx.strokeStyle = 'rgba(22,101,52,0.55)'
     ctx.lineWidth = 4
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     ctx.beginPath()
-    ctx.moveTo(x, h)
+    ctx.moveTo(x, y)
     const segs = 5 + Math.floor(Math.random() * 2)
     for (let i = 1; i <= segs; i++) {
       const sway = Math.sin(this.bgTime * 0.75 + x * 0.02 + i * 0.9) * 7 * (i / segs)
-      ctx.lineTo(x + sway, h - i * 20)
+      ctx.lineTo(x + sway, y - i * 20 * dir)
     }
     ctx.stroke()
     ctx.restore()
   }
 
-  private drawSeaweedFlipped(ctx: CanvasRenderingContext2D, x: number) {
-    ctx.save()
-    ctx.strokeStyle = 'rgba(22,101,52,0.55)'
-    ctx.lineWidth = 4
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    ctx.beginPath()
-    ctx.moveTo(x, 0)
-    const segs = 5 + Math.floor(Math.random() * 2)
-    for (let i = 1; i <= segs; i++) {
-      const sway = Math.sin(this.bgTime * 0.75 + x * 0.02 + i * 0.9) * 7 * (i / segs)
-      ctx.lineTo(x + sway, i * 20)
-    }
-    ctx.stroke()
-    ctx.restore()
-  }
+
 
   private drawParticles(ctx: CanvasRenderingContext2D) {
     for (const p of this.particles) {
@@ -446,6 +488,8 @@ export class GameScene {
   }
 
   private drawCannon(ctx: CanvasRenderingContext2D) {
+    const w = this.canvas.width
+    const h = this.canvas.height
     const barrelLen = 38
     const barrelW = 13
 
@@ -454,9 +498,6 @@ export class GameScene {
       const cx = scr.x
       const cy = scr.y
       let drawAngle = angle
-      if (this.isFlipped) {
-        drawAngle += Math.PI
-      }
 
       ctx.save()
       ctx.translate(cx, cy)
@@ -506,11 +547,16 @@ export class GameScene {
       ctx.restore()
     }
 
-    for (const [seatId, state] of this.seatStates.entries()) {
-      if (!state.active) continue
-      const origin = this.getSeatOrigin(seatId)
-      drawSingleCannon(origin, state.cannonAngle, seatId === this.seatId)
+    // Vẽ các nòng súng khác (Multiplayer)
+    for (const [sId, state] of this.seatStates.entries()) {
+      if (sId === this.seatId) continue
+      const absOrigin = this.getAbsoluteSeatOrigin(sId, w, h)
+      drawSingleCannon(absOrigin, this.absoluteAngleToLocal(state.cannonAngle), false)
     }
+
+    // Vẽ nòng súng của bản thân
+    const localAbs = this.getAbsoluteSeatOrigin(this.seatId, w, h)
+    drawSingleCannon(localAbs, this.absoluteAngleToLocal(this.cannonAngle), true)
   }
 
   private drawCrosshair(ctx: CanvasRenderingContext2D) {
