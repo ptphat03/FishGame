@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { authApi } from '../api/auth'
 import { useWalletStore } from '../stores/walletStore'
+import { Fish, Check } from 'lucide-react'
 
 type Tab = 'login' | 'register'
 
@@ -34,7 +35,7 @@ export default function LoginPage() {
       const user = await authApi.me()
       setAuth(user, res.access_token)
       fetchWallet()
-      navigate('/lobby', { replace: true })
+      navigate('/', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -72,13 +73,13 @@ export default function LoginPage() {
   const labelCls = 'block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1.5'
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-900">
-      <div className="w-full max-w-4xl mx-4 flex rounded-xl border border-white/[0.07] overflow-hidden shadow-2xl">
-        {/* Left panel */}
-        <div className="hidden md:flex flex-col justify-center bg-gray-800 px-10 py-12 w-2/5 border-r border-white/[0.07]">
+    <div className="min-h-screen w-full flex items-center justify-center text-gray-100">
+      <div className="neon-card w-full max-w-4xl mx-4 flex shadow-2xl p-0">
+        {}
+        <div className="hidden md:flex flex-col justify-center bg-blue-900/10 px-10 py-12 w-2/5 border-r border-blue-500/20">
           <div className="flex items-center gap-2.5 mb-8">
-            <span className="text-2xl">🐟</span>
-            <span className="text-lg font-semibold text-gray-100">Fish Game</span>
+            <Fish size={32} className="text-blue-400" />
+            <span className="text-lg font-semibold text-gray-100">CyberFish</span>
           </div>
           <h2 className="text-2xl font-semibold text-gray-100 leading-snug mb-3">
             Shoot fish,<br />earn coins,<br />top the board.
@@ -89,23 +90,23 @@ export default function LoginPage() {
           <div className="flex flex-col gap-3">
             {['Free to join', 'Instant sessions', 'Live leaderboard'].map((txt) => (
               <div key={txt} className="flex items-center gap-2.5 text-sm text-gray-400">
-                <span className="text-emerald-400">✓</span>
+                <Check size={16} className="text-emerald-400" />
                 {txt}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Right panel — form */}
-        <div className="flex-1 bg-gray-900 px-8 py-10">
-          {/* Mobile logo */}
+        {}
+        <div className="flex-1 bg-transparent px-8 py-10">
+          {}
           <div className="flex items-center gap-2 mb-6 md:hidden">
-            <span className="text-xl">🐟</span>
-            <span className="text-base font-semibold text-gray-100">Fish Game</span>
+            <Fish size={24} className="text-blue-400" />
+            <span className="text-base font-semibold text-gray-100">CyberFish</span>
           </div>
 
-          {/* Tab toggle */}
-          <div className="flex bg-gray-800 rounded-lg p-1 mb-7">
+          {}
+          <div className="flex bg-gray-800/50 rounded-lg p-1 mb-7 border border-blue-500/10">
             {(['login', 'register'] as Tab[]).map((tab) => (
               <button
                 key={tab}
@@ -121,7 +122,7 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* Messages */}
+          {}
           {error && (
             <div className="mb-5 p-3 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 text-sm">
               {error}
@@ -160,7 +161,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 mt-2 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                className="neon-btn w-full py-2.5 mt-2"
               >
                 {loading ? 'Logging in...' : 'Sign in'}
               </button>
@@ -188,7 +189,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 mt-2 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                className="neon-btn w-full py-2.5 mt-2"
               >
                 {loading ? 'Creating account...' : 'Create Account'}
               </button>

@@ -1,32 +1,32 @@
 import type { Fish } from '../../types'
 import { SpawnFishPayload, CoordTransformer } from '../scenes/GameScene'
 
-const PALETTE = [
-  { body: '#22d3ee', shade: '#0891b2' },
-  { body: '#fb923c', shade: '#c2410c' },
-  { body: '#a78bfa', shade: '#6d28d9' },
-  { body: '#4ade80', shade: '#15803d' },
-  { body: '#f472b6', shade: '#be185d' },
-  { body: '#fbbf24', shade: '#b45309' },
-  { body: '#f87171', shade: '#b91c1c' },
-]
+const imageCache: Record<string, HTMLImageElement> = {}
+
+function getImage(path: string): HTMLImageElement {
+  if (!imageCache[path]) {
+    const img = new Image()
+    img.src = path
+    imageCache[path] = img
+  }
+  return imageCache[path]
+}
 
 export class FishEntity {
   public x: number = 0
   public y: number = 0
   public isDead = false
   public readonly instanceId: string
-  public readonly killProb: number   // xác suất kill mỗi lần bắn trúng (đã nhân RTP)
+  public readonly killProb: number
   public isFlashing = false
   private flashTimer = 0
-  private shakeX = 0                // rung lắc khi bị trúng
+  private shakeX = 0
   private shakeY = 0
   public readonly fishData: Fish
-  public direction: number = 1;
-  private baseY: number = 0;
+  public direction: number = 1
+  private baseY: number = 0
 
   private speed: number
-  private color: { body: string; shade: string }
   readonly size: number
 
   private payload: SpawnFishPayload
@@ -39,61 +39,76 @@ export class FishEntity {
     this.payload = payload
 
     this.speed = fishData.speed * 55 + 25
-    // Lấy màu sắc dựa trên ID của cá để mỗi loại cá có 1 màu cố định
-    // Dùng chia lấy dư (%) phòng trường hợp số loại cá nhiều hơn số màu trong PALETTE
-    const ci = (fishData.id - 1) % PALETTE.length
-    this.color = PALETTE[Math.max(0, ci)]
+    this.size = Math.min(60, Math.max(20, 18 + Math.log(fishData.health + 1) * 10))
+    this.initPath()
 
-    // size grows with health (log scale), clamped 20-55
-    this.size = Math.min(55, Math.max(20, 18 + Math.log(fishData.health + 1) * 9))
-    this.initPath();
-
-    // Tính toán timeAlive ban đầu (nếu cá được server sinh ra từ trước)
     const now = Date.now()
     this.timeAlive = Math.max(0, (now - payload.spawn_time) / 1000)
     
-    // Cập nhật toạ độ ngay lập tức theo timeAlive để cá không bị reset về đầu map
     this.updatePosition(canvasW, canvasH)
   }
 
   private initPath() {
-    // Dùng mã instanceId để tạo seed random đồng bộ giữa các client (0.0 -> 1.0)
     let seed = 0;
     for (let i = 0; i < this.instanceId.length; i++) {
       seed = (seed + this.instanceId.charCodeAt(i)) % 100;
     }
     const syncRand = seed / 100;
-
-    // Phân tán cá dọc theo trục Y một chút để không bị dính chùm vào nhau (±30% màn hình)
     this.baseY = (syncRand - 0.5) * 0.6;
   }
 
-  private getPositionAtTime(t: number, canvasW: number, canvasH: number): { x: number; y: number } {
-    let x = 0, y = 0;
-    
-    const dist = this.speed * t;
-    const dx = dist * (canvasW / Math.sqrt(canvasW*canvasW + canvasH*canvasH));
-    const dy = dist * (canvasH / Math.sqrt(canvasW*canvasW + canvasH*canvasH));
-    
-    const offsetY = this.baseY * canvasH;
+  getCollisionRadius(): number {
+    let typeScale = 1.0;
+    if (this.fishData.name.includes('Clownfish')) typeScale = 0.8;
+    else if (this.fishData.name.includes('Pufferfish')) typeScale = 1.1;
+    else if (this.fishData.name.includes('Stingray')) typeScale = 1.4;
+    else if (this.fishData.name.includes('Turtle')) typeScale = 1.8;
+    else if (this.fishData.name.includes('Shark')) typeScale = 3.2;
 
-    switch (this.payload.path_id) {
-      case 1: // Bay xéo từ trên-trái xuống dưới-phải
-        x = -80 + dx;
-        y = offsetY - 80 + dy;
+    const globalSizeMultiplier = 2.0;
+    const drawWidth = this.size * 1.8 * typeScale * globalSizeMultiplier;
+    return drawWidth * 0.45; // slightly smaller than full width for generous hitbox
+  }
+
+  private getPositionAtTime(t: number, canvasW: number, canvasH: number): { x: number; y: number } {
+    const dist = this.speed * t;
+    const pathType = (this.payload.path_id - 1) % 5; // Có 5 kiểu bơi (0 đến 4)
+    const isLeftToRight = (this.payload.path_id % 2 === 1);
+    
+    // Y cơ bản (từ 10% đến 90% chiều cao màn hình)
+    const offsetY = canvasH * 0.1 + (this.baseY + 0.5) * canvasH * 0.8;
+    
+    let x = 0;
+    let y = offsetY;
+
+    if (isLeftToRight) {
+      x = -150 + dist;
+    } else {
+      x = canvasW + 150 - dist;
+    }
+
+    switch (pathType) {
+      case 0: 
+        // Kiểu 0: Bơi ngang thẳng tắp
         break;
-      case 2: // Bay xéo từ dưới-trái lên trên-phải
-        x = -80 + dx;
-        y = canvasH + 80 + offsetY - dy;
+      case 1: 
+        // Kiểu 1: Bơi lượn sóng (Sine wave)
+        y = offsetY + Math.sin(t * 1.5 + this.baseY * 10) * 80;
         break;
-      case 3: // Bay xéo từ trên-phải xuống dưới-trái
-        x = canvasW + 80 - dx;
-        y = offsetY - 80 + dy;
+      case 2: 
+        // Kiểu 2: Bơi chéo (Diagonal)
+        const slope = (this.baseY > 0) ? 0.25 : -0.25;
+        y = isLeftToRight ? (offsetY + dist * slope) : (offsetY - dist * slope);
         break;
-      case 4: // Bay xéo từ dưới-phải lên trên-trái
-      default:
-        x = canvasW + 80 - dx;
-        y = canvasH + 80 + offsetY - dy;
+      case 3: 
+        // Kiểu 3: Bơi hình Parabol (Lượn hình vòng cung lớn)
+        const normalizedX = (x - canvasW / 2) / (canvasW / 2);
+        const amplitude = (this.baseY > 0) ? 200 : -200;
+        y = offsetY - amplitude * (1 - normalizedX * normalizedX);
+        break;
+      case 4: 
+        // Kiểu 4: Lượn sóng gợn nhẹ và chậm
+        y = offsetY + Math.cos(t * 0.8 + this.baseY * 5) * 40;
         break;
     }
 
@@ -110,17 +125,14 @@ export class FishEntity {
     return this.timeAlive >= this.payload.duration;
   }
 
-  // Bật flash + shake — không set isDead (server mới quyết định)
   takeDamage(_amount: number) {
     if (this.isDead) return
     this.isFlashing = true
     this.flashTimer = 0.20
-    // rung ngẫu nhiên nhỏ
     this.shakeX = (Math.random() - 0.5) * 6
     this.shakeY = (Math.random() - 0.5) * 4
   }
 
-  // Gọi khi server xác nhận cá đã chết
   confirmDeath() {
     if (this.isDead) return
     this.isDead = true
@@ -129,11 +141,8 @@ export class FishEntity {
   update(dt: number, canvasW: number, canvasH: number) {
     if (this.isDead) return
     this.timeAlive += dt
-
-    // Cập nhật lại toạ độ theo thời gian sống hiện tại (đảm bảo đồng bộ với mọi client)
     this.updatePosition(canvasW, canvasH)
 
-    // Flash + shake timer (Giữ nguyên)
     if (this.isFlashing) {
       this.flashTimer -= dt
       this.shakeX *= 0.7
@@ -149,100 +158,86 @@ export class FishEntity {
   draw(ctx: CanvasRenderingContext2D, worldToScreen: CoordTransformer, w: number, h: number) {
     if (this.isDead) return
 
-    // Chuyển đổi toạ độ World → Screen
     const transform = worldToScreen ?? ((x: number, y: number) => ({ x, y }))
     const scr = transform(this.x + this.shakeX, this.y + this.shakeY)
 
     ctx.save()
     ctx.translate(scr.x, scr.y)
 
-    // Flash effect: lớp trắng phủ lên cá khi bị trúng đạn
-    if (this.isFlashing) {
-      const alpha = (this.flashTimer / 0.20) * 0.55
-      ctx.save()
-      ctx.globalAlpha = alpha
-      ctx.beginPath()
-      ctx.ellipse(0, 0, this.size * 1.1, this.size * 0.65, 0, 0, Math.PI * 2)
-      ctx.fillStyle = '#ffffff'
-      ctx.fill()
-      ctx.restore()
-    }
-
-    // Determine local visual angle dynamically
     const dt = 0.01
+    const baseScr = transform(this.x, this.y)
     const nextPos = this.getPositionAtTime(this.timeAlive + dt, w, h)
-
     const scrNext = transform(nextPos.x, nextPos.y)
-    const lx = scrNext.x - scr.x
-    const ly = scrNext.y - scr.y
+    
+    // Tính toán góc bằng toạ độ gốc chưa rung lắc, tránh việc cá bị xoay mòng mòng khi trúng đạn
+    const lx = scrNext.x - baseScr.x
+    const ly = scrNext.y - baseScr.y
     const angle = Math.atan2(ly, lx)
 
     ctx.rotate(angle)
 
-    // Lật ngược bụng cá nếu bơi ngược chiều trục X cục bộ
+    // Flip vertical if moving left so the fish is never upside down
     if (lx < 0) ctx.scale(1, -1)
 
-    const s = this.size
-    const { body, shade } = this.color
+    let typeScale = 1.0;
+    if (this.fishData.name.includes('Clownfish')) typeScale = 0.8;
+    else if (this.fishData.name.includes('Pufferfish')) typeScale = 1.1;
+    else if (this.fishData.name.includes('Stingray')) typeScale = 1.4;
+    else if (this.fishData.name.includes('Turtle')) typeScale = 1.8;
+    else if (this.fishData.name.includes('Shark')) typeScale = 3.2;
+
+    // Phóng to tất cả các loại cá lên gấp đôi
+    const globalSizeMultiplier = 2.0;
+    const drawWidth = this.size * 1.8 * typeScale * globalSizeMultiplier;
 
     // Shadow
     ctx.save()
-    ctx.globalAlpha = 0.15
+    ctx.globalAlpha = 0.3
     ctx.beginPath()
-    ctx.ellipse(s * 0.1, s * 0.75, s * 0.8, s * 0.2, 0, 0, Math.PI * 2)
+    ctx.ellipse(0, drawWidth * 0.4, drawWidth * 0.5, drawWidth * 0.15, 0, 0, Math.PI * 2)
     ctx.fillStyle = '#000'
     ctx.fill()
     ctx.restore()
 
-    // Tail
-    ctx.beginPath()
-    ctx.moveTo(-s * 0.85, 0)
-    ctx.lineTo(-s * 1.55, -s * 0.55)
-    ctx.lineTo(-s * 1.55, s * 0.55)
-    ctx.closePath()
-    ctx.fillStyle = shade
-    ctx.fill()
+    // Draw Image
+    const imgPath = this.fishData.asset_path || '/assets/fish/clownfish.svg'
+    const img = getImage(imgPath)
+    
+    if (img.complete && img.naturalWidth > 0) {
+      const drawHeight = drawWidth * (img.naturalHeight / img.naturalWidth)
+      
+      // Draw actual fish
+      ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight)
 
-    // Body
-    ctx.beginPath()
-    ctx.ellipse(0, 0, s, s * 0.58, 0, 0, Math.PI * 2)
-    ctx.fillStyle = body
-    ctx.fill()
-
-    // Belly highlight
-    ctx.beginPath()
-    ctx.ellipse(s * 0.08, s * 0.18, s * 0.48, s * 0.22, 0, 0, Math.PI * 2)
-    ctx.fillStyle = 'rgba(255,255,255,0.22)'
-    ctx.fill()
-
-    // Dorsal fin
-    ctx.beginPath()
-    ctx.moveTo(-s * 0.05, -s * 0.54)
-    ctx.lineTo(s * 0.25, -s * 0.96)
-    ctx.lineTo(s * 0.58, -s * 0.54)
-    ctx.closePath()
-    ctx.fillStyle = shade
-    ctx.fill()
-
-    // Pectoral fin
-    ctx.beginPath()
-    ctx.ellipse(s * 0.15, s * 0.3, s * 0.28, s * 0.13, -0.4, 0, Math.PI * 2)
-    ctx.fillStyle = `${shade}cc`
-    ctx.fill()
-
-    // Eye
-    ctx.beginPath()
-    ctx.arc(s * 0.52, -s * 0.1, s * 0.16, 0, Math.PI * 2)
-    ctx.fillStyle = '#0f172a'
-    ctx.fill()
-    ctx.beginPath()
-    ctx.arc(s * 0.55, -s * 0.13, s * 0.07, 0, Math.PI * 2)
-    ctx.fillStyle = '#fff'
-    ctx.fill()
+      // Draw white flash exactly over the fish shape
+      if (this.isFlashing) {
+        ctx.save()
+        ctx.filter = 'brightness(0) invert(1)'
+        ctx.globalAlpha = (this.flashTimer / 0.20) * 0.8
+        ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight)
+        ctx.restore()
+      }
+    } else {
+      // Fallback
+      ctx.beginPath()
+      ctx.ellipse(0, 0, drawWidth / 2, drawWidth / 4, 0, 0, Math.PI * 2)
+      ctx.fillStyle = '#ff0000'
+      ctx.fill()
+      
+      if (this.isFlashing) {
+        ctx.save()
+        ctx.globalAlpha = (this.flashTimer / 0.20) * 0.8
+        ctx.beginPath()
+        ctx.ellipse(0, 0, drawWidth / 2, drawWidth / 4, 0, 0, Math.PI * 2)
+        ctx.fillStyle = '#ffffff'
+        ctx.fill()
+        ctx.restore()
+      }
+    }
 
     ctx.restore()
 
-    // Label tỷ lệ (vẽ riêng qua transform, luôn thẳng đứng không bị ngược)
+    // Stats Label
     this.drawStatsLabel(ctx, transform)
   }
 
@@ -260,7 +255,6 @@ export class FishEntity {
         ? pct.toFixed(2) + '%'
         : pct.toFixed(1) + '%'
 
-    // Màu xác suất: xanh → vàng → cam → đỏ tuỳ theo độ khó
     const probColor = pct > 10 ? '#4ade80'
       : pct > 1 ? '#facc15'
         : pct > 0.1 ? '#fb923c'
@@ -279,46 +273,33 @@ export class FishEntity {
     const multW = ctx.measureText(multText).width + 10
     const probW = ctx.measureText(probText).width + 10
 
-    // Khai báo các hằng số khoảng cách
-    const gapX = 4    // Khoảng cách ngang giữa mult và prob
-    const gapY = 4    // Khoảng cách dọc giữa 2 hàng
-    const h = 16      // Chiều cao của badge
-    const r = 4       // Độ bo góc
+    const gapX = 4
+    const gapY = 4
+    const h = 16
+    const r = 4
 
-    // Tính tổng chiều rộng hàng dưới
     const bottomTotalW = multW + gapX + probW
-
-    // Tính tọa độ X bắt đầu cho từng hàng để đảm bảo CĂN GIỮA (cx)
     const startXTop = cx - nameW / 2
     const startXBottom = cx - bottomTotalW / 2
-
-    // Tính tọa độ Y trung tâm cho từng hàng
     const cyBottom = cy
     const cyTop = cy - h - gapY
 
     ctx.save()
-    
-    // Không cần quay chữ vì CSS canvas luôn nằm ngang và không bị lật
     ctx.translate(cx, cyTop + (h + gapY) / 2)
     ctx.translate(-cx, -(cyTop + (h + gapY) / 2))
 
-    // ─── VẼ HÀNG TRÊN: TÊN CÁ ────────────────────────────────────────────────
     ctx.fillStyle = 'rgba(0,0,0,0.55)'
     this._roundRect(ctx, startXTop, cyTop - h / 2, nameW, h, r)
     ctx.fill()
     ctx.fillStyle = '#e2e8f0'
     ctx.fillText(nameText, startXTop + nameW / 2, cyTop)
 
-    // ─── VẼ HÀNG DƯỚI: MULTIPLIER & PROBABILITY ──────────────────────────────
-
-    // 1. Nền multiplier badge (Nằm bên trái)
     ctx.fillStyle = 'rgba(0,0,0,0.55)'
     this._roundRect(ctx, startXBottom, cyBottom - h / 2, multW, h, r)
     ctx.fill()
     ctx.fillStyle = '#e2e8f0'
     ctx.fillText(multText, startXBottom + multW / 2, cyBottom)
 
-    // 2. Nền prob badge (Nằm bên phải)
     ctx.fillStyle = 'rgba(0,0,0,0.55)'
     this._roundRect(ctx, startXBottom + multW + gapX, cyBottom - h / 2, probW, h, r)
     ctx.fill()

@@ -4,13 +4,15 @@
 
 @layer base {
   html, body {
-    @apply bg-slate-900 text-white;
+    @apply bg-[#050505] text-white;
+    background-image: radial-gradient(ellipse 80% 80% at 50% -20%, rgba(59, 130, 246, 0.15), rgba(255, 255, 255, 0));
+    background-attachment: fixed;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+    scrollbar-color: rgba(59, 130, 246, 0.4) transparent;
   }
 
   ::-webkit-scrollbar {
@@ -22,10 +24,38 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.12);
+    background-color: rgba(59, 130, 246, 0.4);
     border-radius: 3px;
   }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(59, 130, 246, 0.7);
+  }
 }
+
+@layer components {
+  .neon-card {
+    @apply relative rounded-xl border border-blue-500/20 bg-gray-900/40 backdrop-blur-md transition-all duration-300 overflow-hidden;
+  }
+  .neon-card-hover:hover {
+    @apply border-blue-400/50 bg-gray-800/60 shadow-[0_0_20px_rgba(59,130,246,0.3)] -translate-y-1;
+  }
+  .neon-card-hover::before {
+    content: '';
+    @apply absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-0 transition-opacity duration-500 pointer-events-none;
+  }
+  .neon-card-hover:hover::before {
+    @apply opacity-100;
+  }
+  
+  .neon-btn {
+    @apply relative rounded-lg font-bold text-sm text-white bg-blue-600 shadow-[0_0_5px_rgba(59,130,246,0.3)] transition-all overflow-hidden flex items-center justify-center;
+  }
+  .neon-btn:hover:not(:disabled) {
+    @apply bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)];
+  }
+}
+
 
 @layer utilities {
   .line-clamp-2 {

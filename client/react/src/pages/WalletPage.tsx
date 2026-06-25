@@ -3,14 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { walletApi } from '../api/wallet'
 import { useWalletStore } from '../stores/walletStore'
 import Navbar from '../components/Navbar'
+import { Link } from 'react-router-dom'
+import { Gamepad2, ArrowDownToLine, ArrowUpFromLine, Wallet, Banknote, ArrowLeft } from 'lucide-react'
 import type { Transaction } from '../types'
 
 const PAGE_SIZE = 10
 
-const TX_META = {
-  play:     { icon: '🎮', label: 'Chơi game',  bgCls: 'bg-blue-500/10'    },
-  deposit:  { icon: '💰', label: 'Nạp vàng',   bgCls: 'bg-amber-500/10'  },
-  withdraw: { icon: '💸', label: 'Rút vàng',   bgCls: 'bg-red-500/10'    },
+const TX_META: Record<string, { icon: React.ReactNode; label: string; bgCls: string }> = {
+  play:     { icon: <Gamepad2 size={18} />, label: 'Play Game',  bgCls: 'bg-blue-500/10 text-blue-400'    },
+  deposit:  { icon: <ArrowDownToLine size={18} />, label: 'Deposit',   bgCls: 'bg-amber-500/10 text-amber-400'  },
+  withdraw: { icon: <ArrowUpFromLine size={18} />, label: 'Withdraw',   bgCls: 'bg-red-500/10 text-red-400'    },
 }
 
 type ModalMode = 'deposit' | 'withdraw'
@@ -25,7 +27,7 @@ function TransferModal({ mode, onClose }: { mode: ModalMode; onClose: () => void
   const mutation = useMutation({
     mutationFn: async () => {
       const n = parseInt(amount)
-      if (isNaN(n) || n <= 0) throw new Error('Số tiền không hợp lệ')
+      if (isNaN(n) || n <= 0) throw new Error('Invalid amount')
       return (isDeposit ? walletApi.deposit : walletApi.withdraw)(n, description || undefined)
     },
     onSuccess: (wallet) => {
@@ -40,9 +42,9 @@ function TransferModal({ mode, onClose }: { mode: ModalMode; onClose: () => void
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-xl border border-white/[0.07] bg-gray-800 p-6 shadow-2xl">
+      <div className="neon-card w-full max-w-sm p-6 shadow-2xl border-blue-500/30">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-semibold text-gray-100">{isDeposit ? 'Nạp vàng' : 'Rút vàng'}</h2>
+          <h2 className="text-base font-semibold text-gray-100">{isDeposit ? 'Deposit' : 'Withdraw'}</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-300 transition-colors text-xl leading-none">×</button>
         </div>
 
@@ -54,12 +56,12 @@ function TransferModal({ mode, onClose }: { mode: ModalMode; onClose: () => void
           )}
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Số vàng</label>
+            <label className="block text-xs text-gray-400 mb-1.5">Amount</label>
             <input
               type="number"
               min={1}
               required
-              placeholder="Nhập số vàng"
+              placeholder="Enter amount"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="w-full px-3 py-2.5 rounded-lg bg-gray-700 border border-gray-600 text-gray-100 placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500/60 tabular-nums"
@@ -83,10 +85,10 @@ function TransferModal({ mode, onClose }: { mode: ModalMode; onClose: () => void
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Ghi chú (tuỳ chọn)</label>
+            <label className="block text-xs text-gray-400 mb-1.5">Description (optional)</label>
             <input
               type="text"
-              placeholder="VD: Nạp tiền chơi game"
+              placeholder="Ex: Deposit for gaming"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3 py-2.5 rounded-lg bg-gray-700 border border-gray-600 text-gray-100 placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500/60"
@@ -99,18 +101,18 @@ function TransferModal({ mode, onClose }: { mode: ModalMode; onClose: () => void
               onClick={onClose}
               className="flex-1 py-2.5 rounded-lg border border-white/[0.1] text-gray-400 hover:text-gray-200 hover:bg-white/5 text-sm transition-all"
             >
-              Hủy
+              Cancel
             </button>
             <button
               type="submit"
               disabled={mutation.isPending || !amount}
-              className={`flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all disabled:opacity-50 ${
+              className={`neon-btn flex-1 py-2.5 ${
                 isDeposit
-                  ? 'bg-amber-500 hover:bg-amber-400 text-gray-900'
-                  : 'bg-red-500 hover:bg-red-400 text-white'
+                  ? 'bg-amber-500 hover:bg-amber-400 text-gray-900 shadow-[0_0_5px_rgba(245,158,11,0.3)] hover:shadow-[0_0_15px_rgba(245,158,11,0.6)]'
+                  : 'bg-red-500 hover:bg-red-400 text-white shadow-[0_0_5px_rgba(239,68,68,0.3)] hover:shadow-[0_0_15px_rgba(239,68,68,0.6)]'
               }`}
             >
-              {mutation.isPending ? 'Đang xử lý…' : isDeposit ? 'Nạp' : 'Rút'}
+              {mutation.isPending ? 'Processing...' : isDeposit ? 'Deposit' : 'Withdraw'}
             </button>
           </div>
         </form>
@@ -134,7 +136,7 @@ function TxRow({ tx }: { tx: Transaction }) {
             <p className="text-gray-500 text-xs mt-0.5 truncate max-w-[200px]">{tx.description}</p>
           )}
           <p className="text-gray-600 text-xs mt-0.5">
-            {new Date(tx.created_at).toLocaleString('vi-VN', {
+            {new Date(tx.created_at).toLocaleString('en-US', {
               day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
             })}
           </p>
@@ -178,15 +180,27 @@ export default function WalletPage() {
   }, [txData, offset])
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen text-gray-100">
       <Navbar />
 
       <main className="pt-20 pb-16 px-4 sm:px-6 max-w-2xl mx-auto">
-        {/* Balance card */}
-        <div className="rounded-xl border border-white/[0.07] bg-gray-800 p-6 mb-4 mt-8">
+        {}
+        <div className="flex items-center justify-between mt-8 mb-4">
+          <h1 className="text-xl font-semibold text-gray-100">Your Wallet</h1>
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.1] text-gray-400 hover:text-gray-200 hover:border-white/20 hover:bg-white/5 text-sm transition-all"
+          >
+            <ArrowLeft size={16} />
+            Back to Home
+          </Link>
+        </div>
+
+        {}
+        <div className="neon-card p-6 mb-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Số dư hiện tại</p>
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Current Balance</p>
               {walletLoading && balance === null ? (
                 <div className="h-9 w-32 bg-white/[0.07] rounded-lg animate-pulse" />
               ) : (
@@ -194,30 +208,30 @@ export default function WalletPage() {
                   {(balance ?? 0).toLocaleString()}
                 </p>
               )}
-              <p className="text-gray-600 text-xs mt-1">Vàng · Fish Game</p>
+              <p className="text-gray-600 text-xs mt-1">Coins · CyberFish</p>
             </div>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => setModal('deposit')}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-500/25 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-sm font-medium transition-all"
               >
-                💰 Nạp vàng
+                <Wallet size={16} /> Deposit
               </button>
               <button
                 onClick={() => setModal('withdraw')}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/15 text-sm font-medium transition-all"
               >
-                💸 Rút vàng
+                <Banknote size={16} /> Withdraw
               </button>
             </div>
           </div>
         </div>
 
-        {/* Transaction history */}
+        {}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-100">Lịch sử giao dịch</h3>
-            {txData && <span className="text-gray-600 text-xs">{txData.total} giao dịch</span>}
+            <h3 className="text-sm font-semibold text-gray-100">Transaction History</h3>
+            {txData && <span className="text-gray-600 text-xs">{txData.total} transactions</span>}
           </div>
 
           {txLoading && !txData && (
@@ -230,20 +244,20 @@ export default function WalletPage() {
 
           {txError && (
             <div className="text-center py-10 text-red-400/70 text-sm">
-              Không thể tải lịch sử giao dịch
+              Failed to load transaction history
             </div>
           )}
 
           {!txLoading && txData && txData.transactions.length === 0 && (
             <div className="text-center py-16">
-              <p className="text-gray-500 text-sm">Chưa có giao dịch nào</p>
-              <p className="text-gray-600 text-xs mt-1">Vào phòng bắn cá để kiếm vàng!</p>
+              <p className="text-gray-500 text-sm">No transactions yet</p>
+              <p className="text-gray-600 text-xs mt-1">Join a room to earn coins!</p>
             </div>
           )}
 
           {txData && txData.transactions.length > 0 && (
             <>
-              <div className={`rounded-xl border border-white/[0.07] bg-gray-800 overflow-hidden transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
+              <div className={`neon-card transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
                 {txData.transactions.map((tx) => <TxRow key={tx.id} tx={tx} />)}
               </div>
 

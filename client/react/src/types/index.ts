@@ -4,7 +4,7 @@ export interface User {
   email: string
   role_id: number
   created_at: string
-  updated_at?: string   // not included in /auth/me response
+  updated_at?: string  
 }
 
 export interface Room {
@@ -94,7 +94,6 @@ export interface TransactionListResponse {
   offset: number
 }
 
-// ── Admin ─────────────────────────────────────────────────────────────────────
 
 export interface DashboardStats {
   total_users: number

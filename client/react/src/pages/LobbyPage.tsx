@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { roomsApi } from '../api/rooms'
 import Navbar from '../components/Navbar'
 import RoomCard from '../components/RoomCard'
+import { RefreshCw } from 'lucide-react'
 
 export default function LobbyPage() {
   const {
@@ -17,7 +18,7 @@ export default function LobbyPage() {
   })
 
   return (
-    <div className="min-h-screen w-full bg-gray-900 overflow-auto">
+    <div className="min-h-screen w-full overflow-auto">
       <Navbar />
 
       <main className="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
@@ -32,9 +33,7 @@ export default function LobbyPage() {
             onClick={() => refetch()}
             className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 border border-white/[0.1] hover:border-white/20 px-3 py-1.5 rounded-lg transition-all"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            <RefreshCw size={14} />
             Refresh
           </button>
         </div>

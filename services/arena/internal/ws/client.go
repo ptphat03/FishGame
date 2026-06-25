@@ -77,8 +77,17 @@ func dbCtx() (context.Context, context.CancelFunc) {
 
 // ── Pumps ─────────────────────────────────────────────────────────────────────
 
+func (c *Client) ForceDisconnect(reason string) {
+	c.sendError("DUPLICATE_LOGIN", reason)
+	go func() {
+		time.Sleep(150 * time.Millisecond)
+		c.conn.Close()
+	}()
+}
+
 func (c *Client) ReadPump() {
 	defer func() {
+		c.hub.UnregisterClient(c)
 		c.endSessionIfActive()
 		if c.roomID != 0 {
 			c.hub.LeaveRoom(c, c.roomID)

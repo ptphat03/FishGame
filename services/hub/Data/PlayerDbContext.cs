@@ -13,6 +13,7 @@ public class PlayerDbContext : DbContext
     public DbSet<Room>         Rooms         => Set<Room>();
     public DbSet<Fish>         Fishes        => Set<Fish>();
     public DbSet<Transaction>  Transactions  => Set<Transaction>();
+    public DbSet<GameSession>  GameSessions  => Set<GameSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -54,6 +55,13 @@ public class PlayerDbContext : DbContext
         {
             e.HasKey(t => t.Id);
             e.Property(t => t.Id).UseIdentityAlwaysColumn();
+        });
+
+        modelBuilder.Entity<GameSession>(e =>
+        {
+            e.HasKey(s => s.Id);
+            e.Property(s => s.Id).UseIdentityAlwaysColumn();
+            e.ToTable("game_sessions");
         });
     }
 }

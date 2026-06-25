@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link, NavLink } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { useWalletStore } from '../stores/walletStore'
 import { authApi } from '../api/auth'
+import { Fish, Settings, Coins } from 'lucide-react'
 
 export default function Navbar() {
   const navigate = useNavigate()
@@ -36,15 +37,17 @@ export default function Navbar() {
   const isWalletPage = location.pathname === '/wallet'
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3 bg-gray-900/90 backdrop-blur border-b border-white/[0.07]">
-      {/* Logo */}
-      <div className="flex items-center gap-2.5">
-        <span className="text-xl">🐟</span>
-        <span className="text-base font-semibold text-gray-100">Fish Game</span>
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3 bg-black/40 backdrop-blur-md border-b border-blue-500/20">
+      <div className="flex items-center gap-4">
+        {}
+        <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+          <Fish size={24} className="text-blue-400" />
+          <span className="text-base font-semibold text-gray-100">CyberFish</span>
+        </Link>
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Admin link */}
+        {}
         {user && user.role_id !== 1 && (
           <NavLink
             to="/admin"
@@ -56,11 +59,11 @@ export default function Navbar() {
               }`
             }
           >
-            ⚙ Admin
+            <Settings size={14} className="inline mr-1 mb-0.5" /> Admin
           </NavLink>
         )}
 
-        {/* Balance chip */}
+        {}
         {user && (
           <Link
             to="/wallet"
@@ -70,7 +73,7 @@ export default function Navbar() {
                 : 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/15 hover:border-amber-500/30'
             }`}
           >
-            <span className="text-base leading-none">🪙</span>
+            <Coins size={16} />
             {loading && balance === null ? (
               <span className="w-12 h-3 rounded-full bg-amber-400/20 animate-pulse inline-block" />
             ) : (
@@ -79,7 +82,7 @@ export default function Navbar() {
           </Link>
         )}
 
-        {/* User avatar */}
+        {}
         {user && (
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-xs">
@@ -89,7 +92,7 @@ export default function Navbar() {
           </div>
         )}
 
-        {/* Logout */}
+        {}
         <button
           onClick={handleLogout}
           className="px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-gray-200 border border-white/[0.1] hover:border-white/20 hover:bg-white/5 transition-all"

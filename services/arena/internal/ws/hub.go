@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ptphat03/Fish-Game/services/game-server/internal/models"
 	"github.com/ptphat03/Fish-Game/services/game-server/internal/usecase"
-	"github.com/google/uuid"
 )
 
 // ActiveFish lưu trữ trạng thái của con cá đang bơi trong phòng
@@ -40,6 +40,9 @@ type Hub struct {
 	mu    sync.RWMutex
 	rooms map[int64]*room
 
+	userMu      sync.RWMutex
+	activeUsers map[int64]*Client
+
 	fishMu        sync.RWMutex // guards CachedFishIDs and CachedFishMap
 	CachedFishIDs []int32
 	CachedFishMap map[int32]models.Fish
@@ -47,7 +50,8 @@ type Hub struct {
 
 func NewHub(fishUC usecase.FishUsecase) *Hub {
 	h := &Hub{
-		rooms: make(map[int64]*room),
+		rooms:       make(map[int64]*room),
+		activeUsers: make(map[int64]*Client),
 	}
 
 	h.CachedFishMap = make(map[int32]models.Fish)
@@ -213,7 +217,7 @@ func (h *Hub) SyncBoardToClient(roomID int64, c *Client) {
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	fishes := make([]SpawnFishMsg, 0, len(r.activeFishes))
 	for _, fish := range r.activeFishes {
 		fishes = append(fishes, SpawnFishMsg{
@@ -224,7 +228,7 @@ func (h *Hub) SyncBoardToClient(roomID int64, c *Client) {
 			Duration:   int32(fish.Duration.Seconds()),
 		})
 	}
-	
+
 	if data := outMsg("sync_board", SyncBoardMsg{Fishes: fishes}); data != nil {
 		select {
 		case c.send <- data:
@@ -246,8 +250,8 @@ func (r *room) StartGameLoop() {
 	r.quitChan = make(chan struct{})
 	r.mu.Unlock()
 
-	spawnTicker := time.NewTicker(3 * time.Second)    // Sinh cá mỗi 1 giây (hoặc 3 giây)
-	cleanupTicker := time.NewTicker(10 * time.Second) // Dọn cá hết hạn mỗi 10 giây
+	spawnTicker := time.NewTicker(1 * time.Second)
+	cleanupTicker := time.NewTicker(10 * time.Second)
 
 	go func() {
 		defer func() {
@@ -268,18 +272,57 @@ func (r *room) StartGameLoop() {
 	}()
 }
 
-// spawnRandomFish xử lý logic tạo cá và gửi xuống Client
 func (r *room) spawnRandomFish() {
 	fishIDs := r.hub.CachedFishIDs
+	var chosenFishID int32 = 1
 
 	if len(fishIDs) == 0 {
 		fishIDs = []int32{1, 2, 3, 4, 5}
+		chosenFishID = fishIDs[rand.Intn(len(fishIDs))]
+	} else {
+		var totalProb float64 = 0
+		r.hub.fishMu.RLock()
+		for _, id := range fishIDs {
+			if fish, ok := r.hub.CachedFishMap[id]; ok {
+				totalProb += fish.BaseProb
+			}
+		}
+
+		rnd := rand.Float64() * totalProb
+		var cumulative float64 = 0
+		for _, id := range fishIDs {
+			if fish, ok := r.hub.CachedFishMap[id]; ok {
+				cumulative += fish.BaseProb
+				if rnd <= cumulative {
+					chosenFishID = id
+					break
+				}
+			}
+		}
+		r.hub.fishMu.RUnlock()
 	}
-	pathIDs := []int32{1, 2, 3, 4}
+
+	var pathIDs []int32
+	switch chosenFishID {
+	case 1: // Clownfish -> Sine wave (pathType 1)
+		pathIDs = []int32{2, 7}
+	case 2: // Pufferfish -> Slow Sine (pathType 4)
+		pathIDs = []int32{5, 10}
+	case 3: // Stingray -> Diagonal (pathType 2)
+		path, _ := []int32{3, 8}[rand.Intn(2)], 0
+		pathIDs = []int32{path} // Keep it array to use rand below, wait, just []int32{3, 8}
+		pathIDs = []int32{3, 8}
+	case 4: // Turtle -> Horizontal (pathType 0)
+		pathIDs = []int32{1, 6}
+	case 5: // Shark -> Parabola (pathType 3)
+		pathIDs = []int32{4, 9}
+	default:
+		pathIDs = []int32{1, 6} // Fallback to horizontal
+	}
 
 	newFish := &ActiveFish{
 		InstanceID: uuid.New().String(),
-		FishID:     fishIDs[rand.Intn(len(fishIDs))],
+		FishID:     chosenFishID,
 		PathID:     pathIDs[rand.Intn(len(pathIDs))],
 		SpawnTime:  time.Now(),
 		Duration:   60 * time.Second,
@@ -311,6 +354,24 @@ func (r *room) cleanupExpiredFishes() {
 		if now.Sub(fish.SpawnTime) > fish.Duration {
 			delete(r.activeFishes, id)
 		}
+	}
+}
+
+func (h *Hub) RegisterClient(c *Client) {
+	h.userMu.Lock()
+	oldClient, exists := h.activeUsers[c.userID]
+	if exists {
+		oldClient.ForceDisconnect("Tài khoản của bạn đã được đăng nhập ở thiết bị khác")
+	}
+	h.activeUsers[c.userID] = c
+	h.userMu.Unlock()
+}
+
+func (h *Hub) UnregisterClient(c *Client) {
+	h.userMu.Lock()
+	defer h.userMu.Unlock()
+	if currentClient, ok := h.activeUsers[c.userID]; ok && currentClient == c {
+		delete(h.activeUsers, c.userID)
 	}
 }
 

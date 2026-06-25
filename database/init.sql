@@ -81,17 +81,16 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 INSERT INTO roles (role_name) VALUES ('player'), ('admin') ON CONFLICT DO NOTHING;
 
 INSERT INTO rooms (name, max_players, rtp) VALUES
-    ('Sảnh Tân Thủ', 4, 0.95),
-    ('Đại Dương',    4, 0.90)
+    ('Novice Hall',   4, 0.95),
+    ('Digital Ocean', 4, 0.90)
 ON CONFLICT DO NOTHING;
 
 -- base_prob × reward_multiplier ≈ 1.0 tại RTP 100%
 INSERT INTO fishes (name, health, reward_multiplier, base_prob, speed, asset_path) VALUES
-    ('Cá Con',       10,  2,    0.5000, 1.2, '/assets/fish/small_fish.glb'),
-    ('Cá Nhỡ',       30,  15,   0.0667, 1.0, '/assets/fish/mid_fish.glb'),
-    ('Cá Heo',       60,  30,   0.0333, 0.8, '/assets/fish/dolphin.glb'),
-    ('Cá Mập',       150, 100,  0.0100, 0.6, '/assets/fish/shark.glb'),
-    ('Cá Voi',       300, 200,  0.0050, 0.5, '/assets/fish/whale.glb'),
-    ('Tiên Cá Boss', 500, 1000, 0.0010, 0.3, '/assets/fish/mermaid_boss.glb'),
-    ('Rồng Biển',    500, 5000, 0.0002, 0.2, '/assets/fish/sea_dragon.glb')
+    ('Clownfish',      20,   2,    0.6, 1.2, '/assets/fish/clownfish.svg'),
+    ('Pufferfish',    30,   15,   0.1, 1.0, '/assets/fish/pufferfish.svg'),
+    ('Stingray',      60,   30,   0.04, 0.8, '/assets/fish/stingray.svg'),
+    ('Turtle',        150,  100,  0.015, 0.6, '/assets/fish/turtle.svg'),
+    ('Shark',  300,  200,  0.005, 0.5, '/assets/fish/shark.svg')
 ON CONFLICT DO NOTHING;
+

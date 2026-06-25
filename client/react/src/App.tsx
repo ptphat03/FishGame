@@ -28,11 +28,11 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
 
           <Route element={<ProtectedRoute />}>
-            <Route path="/lobby" element={<LobbyPage />} />
+            <Route path="/" element={<LobbyPage />} />
             <Route path="/game/:roomId" element={<GamePage />} />
             <Route path="/wallet" element={<WalletPage />} />
 
-            {/* Admin — chỉ role_id != 1 */}
+            {}
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<DashboardPage />} />
               <Route path="/admin/fish" element={<FishPage />} />
@@ -41,7 +41,7 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route path="*" element={<Navigate to="/lobby" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

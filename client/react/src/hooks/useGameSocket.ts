@@ -3,7 +3,6 @@ import { useAuthStore } from '../stores/authStore'
 import { useWalletStore } from '../stores/walletStore'
 import { useGameStore } from '../stores/gameStore'
 
-// ── Message types (mirror backend ws/message.go) ──────────────────────────────
 
 type WsOutMsg =
   | { type: 'join_room'; payload: { room_id: number } }
@@ -26,7 +25,6 @@ interface SessionEndedPayload { session: unknown; wallet: { balance: number } }
 interface BroadcastShootPayload { seat_id: number; x: number; y: number; angle: number }
 interface BroadcastKillPayload { instance_id: string }
 interface SyncBoardPayload { fishes: any[] }
-// ── Hook ──────────────────────────────────────────────────────────────────────
 
 export type WsStatus = 'idle' | 'connecting' | 'connected' | 'disconnected'
 
@@ -40,7 +38,6 @@ interface UseGameSocketReturn {
   sendShoot: (x: number, y: number, angle: number, betAmount: number) => void
   sendHitFish: (fishId: number, instanceId: string) => void
   sendClientReady: () => void
-  // GamePage gán callback vào đây; hook gọi nó khi server xác nhận killed=true
   onFishKilledRef: { current: ((instanceId: string) => void) | null }
   onFishSpawnRef: { current: ((payload: any) => void) | null }
   onBroadcastShootRef: { current: ((payload: BroadcastShootPayload) => void) | null }
@@ -51,7 +48,6 @@ interface UseGameSocketReturn {
 export function useGameSocket(roomId: number | null): UseGameSocketReturn {
   const wsRef = useRef<WebSocket | null>(null)
   const roomIdRef = useRef(roomId)
-  // Callback được GamePage gán vào; hook gọi nó khi server xác nhận killed=true
   const onFishKilledRef = useRef<((instanceId: string) => void) | null>(null)
   const onFishSpawnRef = useRef<((payload: any) => void) | null>(null)
 
@@ -66,14 +62,12 @@ export function useGameSocket(roomId: number | null): UseGameSocketReturn {
   const { setBalance } = useWalletStore()
   const { addCoins, addScore } = useGameStore()
 
-  // ── send helper ─────────────────────────────────────────────────────────────
   const send = useCallback((msg: WsOutMsg) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(msg))
     }
   }, [])
 
-  // ── Public send actions ──────────────────────────────────────────────────────
   const sendShoot = useCallback(
     (x: number, y: number, angle: number, betAmount: number) =>
       send({ type: 'shoot', payload: { x, y, angle, bet_amount: betAmount } }),
@@ -98,7 +92,6 @@ export function useGameSocket(roomId: number | null): UseGameSocketReturn {
     }
   }, [])
 
-  // ── Message handler ──────────────────────────────────────────────────────────
   const handleMessage = useCallback(
     (msg: WsInMsg) => {
       if (document.hidden) {
@@ -126,7 +119,6 @@ export function useGameSocket(roomId: number | null): UseGameSocketReturn {
           if (p.killed) {
             addCoins(p.amount ?? 0)
             addScore(1)
-            // Báo GameScene để play death animation
             onFishKilledRef.current?.(p.instance_id)
           }
           break
@@ -160,7 +152,6 @@ export function useGameSocket(roomId: number | null): UseGameSocketReturn {
         }
         case 'sync_board': {
           const p = msg.payload as unknown as SyncBoardPayload
-          // Gọi spawnFish cho từng con cá trong mảng
           p.fishes.forEach(fish => onFishSpawnRef.current?.(fish))
           break
         }
@@ -171,12 +162,10 @@ export function useGameSocket(roomId: number | null): UseGameSocketReturn {
     [addCoins, addScore, setBalance],
   )
 
-  // ── Connect / Disconnect ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!accessToken || !roomId) return
     roomIdRef.current = roomId
 
-    // Xây URL WebSocket: dùng window.location để tự động đúng host
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const url = `${protocol}//${window.location.host}/api/v1/ws?token=${accessToken}`
 
@@ -202,11 +191,9 @@ export function useGameSocket(roomId: number | null): UseGameSocketReturn {
 
     ws.onclose = () => setStatus('disconnected')
 
-    // Cleanup: gửi leave_room trước khi đóng (component unmount / roomId thay đổi)
     return () => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'leave_room', payload: null }))
-        // Cho một nhịp để server nhận leave_room trước khi đóng kết nối
         setTimeout(() => ws.close(1000, 'leaving room'), 150)
       } else {
         ws.close()

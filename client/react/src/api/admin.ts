@@ -4,13 +4,11 @@ import type { DashboardStats, Fish, Room, FishRequest, RoomRequest, AdminUser } 
 const A = '/admin'
 
 export const adminApi = {
-  // Dashboard
   getDashboard: async (): Promise<DashboardStats> => {
     const res = await apiClient.get<{ data: DashboardStats; error: null }>(`${A}/dashboard`)
     return extractData(res)
   },
 
-  // Fish
   listFish: async (): Promise<Fish[]> => {
     const res = await apiClient.get<{ data: Fish[]; error: null }>(`${A}/fish`)
     return extractData(res)
@@ -27,7 +25,6 @@ export const adminApi = {
     await apiClient.delete(`${A}/fish/${id}`)
   },
 
-  // Rooms
   listRooms: async (): Promise<Room[]> => {
     const res = await apiClient.get<{ data: Room[]; error: null }>(`${A}/rooms`)
     return extractData(res)
@@ -44,7 +41,6 @@ export const adminApi = {
     await apiClient.delete(`${A}/rooms/${id}`)
   },
 
-  // Users (read-only)
   listUsers: async (limit = 50, offset = 0): Promise<{ data: AdminUser[]; total: number }> => {
     const res = await apiClient.get<{ data: AdminUser[]; total: number; error: null }>(
       `${A}/users?limit=${limit}&offset=${offset}`,

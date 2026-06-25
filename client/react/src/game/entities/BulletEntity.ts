@@ -1,7 +1,7 @@
 import { CoordTransformer } from '../scenes/GameScene'
 
-const BULLET_SPEED = 620 // px/s
-const BULLET_MAX_LIFE = 1.8 // seconds
+const BULLET_SPEED = 620
+const BULLET_MAX_LIFE = 1.8
 
 export class BulletEntity {
   public x: number
@@ -17,7 +17,6 @@ export class BulletEntity {
     const dx = targetX - startX
     const dy = targetY - startY
     
-    // Chuẩn hoá theo tỉ lệ 16:9 để đạn bắn ngang (Player 2,3) bay nhanh tương đương đạn bắn dọc (Player 0,1)
     const ASPECT_RATIO = 16 / 9
     const du = dx / ASPECT_RATIO
     const dv = dy
@@ -47,31 +46,37 @@ export class BulletEntity {
 
     const transform = worldToScreen ?? ((x: number, y: number) => ({ x, y }))
 
-    // Trail
     for (let i = 0; i < this.trail.length; i++) {
       const t = i / this.trail.length
       const scr = transform(this.trail[i].x, this.trail[i].y)
       ctx.beginPath()
-      ctx.arc(scr.x, scr.y, 3 * t, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(251,191,36,${t * 0.35})`
+      ctx.arc(scr.x, scr.y, 4 * t, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(34, 211, 238, ${t * 0.4})`
       ctx.fill()
     }
 
-    // Glow halo
     const scrMain = transform(this.x, this.y)
-    const grd = ctx.createRadialGradient(scrMain.x, scrMain.y, 0, scrMain.x, scrMain.y, 12)
-    grd.addColorStop(0, 'rgba(255,220,50,0.7)')
-    grd.addColorStop(1, 'rgba(255,140,0,0)')
+    
+    ctx.save()
+    ctx.translate(scrMain.x, scrMain.y)
+    
+    const angle = Math.atan2(this.vy, this.vx)
+    ctx.rotate(angle)
+
+    ctx.shadowColor = '#22d3ee'
+    ctx.shadowBlur = 15
+
     ctx.beginPath()
-    ctx.arc(scrMain.x, scrMain.y, 12, 0, Math.PI * 2)
-    ctx.fillStyle = grd
+    ctx.ellipse(0, 0, 16, 4, 0, 0, Math.PI * 2)
+    ctx.fillStyle = '#0891b2'
     ctx.fill()
 
-    // Core
     ctx.beginPath()
-    ctx.arc(scrMain.x, scrMain.y, 4, 0, Math.PI * 2)
-    ctx.fillStyle = '#fef08a'
+    ctx.ellipse(0, 0, 8, 2, 0, 0, Math.PI * 2)
+    ctx.fillStyle = '#c0caf5'
     ctx.fill()
+
+    ctx.restore()
   }
 
   destroy() {

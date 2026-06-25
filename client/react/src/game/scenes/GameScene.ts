@@ -5,11 +5,11 @@ import type { Fish } from '../../types'
 export interface GameSceneOptions {
   canvas: HTMLCanvasElement
   fishList: Fish[]
-  roomRtp: number                                           // RTP phòng dạng decimal (0.0–1.0)
-  seatId: number                                            // Ghế ngồi (0–3), 2/3 sẽ bị lật
-  onHitFish?: (fishId: number, instanceId: string) => void // đạn chạm cá → gửi lên server
+  roomRtp: number                                          
+  seatId: number                                           
+  onHitFish?: (fishId: number, instanceId: string) => void
   onScore?: (points: number) => void
-  onShot?: (x: number, y: number, angle: number) => boolean // trả false → không bắn đạn
+  onShot?: (x: number, y: number, angle: number) => boolean
 }
 
 export interface SpawnFishPayload {
@@ -20,7 +20,6 @@ export interface SpawnFishPayload {
   duration: number;
 }
 
-// Hàm chuyển đổi toạ độ World ↔ Screen (export cho FishEntity/BulletEntity dùng)
 export type CoordTransformer = (wx: number, wy: number) => { x: number; y: number }
 
 interface Particle {
@@ -63,8 +62,13 @@ export class GameScene {
   private animFrame = 0
   private lastTime = 0
   private bgTime = 0
+  
+  private localBetAmount: number = 10
 
-  // ── Hero View ──────────────────────────────────────────────────────────────
+  public setLocalBet(amount: number) {
+    this.localBetAmount = amount
+  }
+
   private seatId: number
   private seatStates = new Map<number, SeatState>()
 
@@ -84,25 +88,14 @@ export class GameScene {
     this.loop(performance.now())
   }
 
-  // ── Coordinate Transformers ─────────────────────────────────────────────────
 
-  /** Chuyển đổi toạ độ World → Screen. Do Canvas đã dùng CSS rotate(180deg) nên không cần flip tại đây nữa. */
+  
   worldToScreen = (worldX: number, worldY: number): { x: number; y: number } => {
     const w = this.canvas.width
     const h = this.canvas.height
     
-    if (this.seatId === 1) { // Top
+    if (this.seatId === 2 || this.seatId === 3) {
       return { x: w - worldX, y: h - worldY }
-    } else if (this.seatId === 2) { // Left
-      return { 
-        x: worldY * (w / h), 
-        y: h - worldX * (h / w) 
-      }
-    } else if (this.seatId === 3) { // Right
-      return { 
-        x: w - worldY * (w / h), 
-        y: worldX * (h / w) 
-      }
     }
     return { x: worldX, y: worldY }
   }
@@ -111,23 +104,12 @@ export class GameScene {
     const w = this.canvas.width
     const h = this.canvas.height
 
-    if (this.seatId === 1) {
+    if (this.seatId === 2 || this.seatId === 3) {
       return { x: w - screenX, y: h - screenY }
-    } else if (this.seatId === 2) {
-      return {
-        x: (h - screenY) * (w / h),
-        y: screenX * (h / w)
-      }
-    } else if (this.seatId === 3) {
-      return {
-        x: screenY * (w / h),
-        y: (w - screenX) * (h / w)
-      }
     }
     return { x: screenX, y: screenY }
   }
 
-  // ── Setup ─────────────────────────────────────────────────────────────────
 
   private resize() {
     const parent = this.canvas.parentElement
@@ -142,45 +124,33 @@ export class GameScene {
       this.bubbles.push({
         x: Math.random() * w,
         y: Math.random() * h,
-        r: 2 + Math.random() * 6,
-        vy: 18 + Math.random() * 28,
+        r: 1.5 + Math.random() * 3,
+        vy: 20 + Math.random() * 40,
         wobble: Math.random() * Math.PI * 2,
-        freq: 0.4 + Math.random() * 1.4,
+        freq: 0.1 + Math.random() * 0.3,
         t: Math.random() * 100,
       })
     }
   }
 
   private absoluteAngleToLocal(angle: number): number {
-    const w = this.canvas.width
-    const h = this.canvas.height
-    
-    const vx = Math.cos(angle)
-    const vy = Math.sin(angle)
-    
-    let lx = vx
-    let ly = vy
-
-    if (this.seatId === 1) {
-      lx = -vx; ly = -vy
-    } else if (this.seatId === 2) {
-      lx = vy * (w / h)
-      ly = -vx * (h / w)
-    } else if (this.seatId === 3) {
-      lx = -vy * (w / h)
-      ly = vx * (h / w)
+    if (this.seatId === 2 || this.seatId === 3) {
+      const vx = Math.cos(angle)
+      const vy = Math.sin(angle)
+      return Math.atan2(-vy, -vx)
     }
-    
-    return Math.atan2(ly, lx)
+    return angle
   }
 
   private getAbsoluteSeatOrigin(seatId: number, w: number, h: number): { x: number; y: number } {
+    const padX = 124;
+    const padY = 72;
     switch (seatId) {
-      case 0: return { x: w / 2, y: h } // Bottom
-      case 1: return { x: w / 2, y: 0 } // Top
-      case 2: return { x: 0, y: h / 2 } // Left
-      case 3: return { x: w, y: h / 2 } // Right
-      default: return { x: w / 2, y: h }
+      case 0: return { x: padX, y: h - padY }
+      case 1: return { x: w - padX, y: h - padY }
+      case 2: return { x: padX, y: padY }
+      case 3: return { x: w - padX, y: padY }
+      default: return { x: padX, y: h - padY }
     }
   }
 
@@ -199,26 +169,22 @@ export class GameScene {
 
   addFishFromServer(payload: SpawnFishPayload) {
     console.log('[GameScene] addFishFromServer called with', payload)
-    // 1. Tìm cấu hình cá trong fishList
     const fishData = this.options.fishList.find(f => f.id === payload.fish_id);
-    if (!fishData) return; // Nếu không có cấu hình thì không vẽ
+    if (!fishData) return;
 
-    // 2. Tính toán RTP (giống logic cũ)
     const rtp = this.options.roomRtp > 0 && this.options.roomRtp <= 1 ? this.options.roomRtp : 0.90
     const killProb = fishData.base_prob * rtp
 
-    // 3. Khởi tạo cá (Truyền thêm payload vào để Entity biết đường bơi)
     const fish = new FishEntity(
       fishData,
       this.canvas.width,
       this.canvas.height,
-      payload,     // Truyền thẳng payload thay vì index
+      payload,    
       killProb
     )
     this.fishEntities.push(fish)
   }
 
-  // Gọi khi server xác nhận cá đã chết (hit_result.killed = true)
   confirmFishDeath(instanceId: string) {
     const fish = this.fishEntities.find((f) => f.instanceId === instanceId)
     if (!fish || fish.isDead) return
@@ -227,7 +193,6 @@ export class GameScene {
     this.options.onScore?.(10)
     fish.confirmDeath()
 
-    // Xoá con cá đã chết khỏi mảng (Không tự sinh thêm cá mới nữa)
     setTimeout(() => {
       if (this.isDisposed) return
       this.fishEntities = this.fishEntities.filter(f => f.instanceId !== instanceId)
@@ -252,7 +217,6 @@ export class GameScene {
     }
   }
 
-  // ── Events ────────────────────────────────────────────────────────────────
 
   private setupEvents() {
     this.canvas.addEventListener('mousemove', this.onMouseMove)
@@ -265,11 +229,9 @@ export class GameScene {
     const screenX = e.clientX - rect.left
     const screenY = e.clientY - rect.top
 
-    // Lưu screenX/Y cho crosshair (vẽ ở vị trí chuột thực tế)
     this.mouseX = screenX
     this.mouseY = screenY
 
-    // Chuyển sang World Space để tính cannon angle
     const world = this.screenToWorld(screenX, screenY)
     const absOrigin = this.getAbsoluteSeatOrigin(this.seatId, this.canvas.width, this.canvas.height)
     this.cannonAngle = Math.atan2(world.y - absOrigin.y, world.x - absOrigin.x)
@@ -281,7 +243,6 @@ export class GameScene {
     const screenX = e.clientX - rect.left
     const screenY = e.clientY - rect.top
 
-    // Chuyển sang World Space
     const world = this.screenToWorld(screenX, screenY)
     const origin = this.getAbsoluteSeatOrigin(this.seatId, this.canvas.width, this.canvas.height)
     const allowed = this.options.onShot?.(world.x, world.y, this.cannonAngle) ?? true
@@ -302,7 +263,6 @@ export class GameScene {
     this.bullets = []
     this.particles = []
   }
-  // ── Game loop ─────────────────────────────────────────────────────────────
 
   private loop = (now: number) => {
     if (this.isDisposed) return
@@ -339,44 +299,36 @@ export class GameScene {
       b.x += Math.sin(b.t * b.freq) * 0.6
       if (b.y < -15) { b.y = h + 10; b.x = Math.random() * w }
     }
-
-    // Collision: đạn chạm cá → flash effect + gửi server, không tự quyết định death
     for (const bullet of this.bullets) {
       if (bullet.isDead) continue
       for (const fish of this.fishEntities) {
         if (fish.isDead) continue
         const dx = bullet.x - fish.x
         const dy = bullet.y - fish.y
-        if (Math.sqrt(dx * dx + dy * dy) < fish.size * 0.88) {
-          fish.takeDamage(10)     // visual flash effect
+        if (Math.sqrt(dx * dx + dy * dy) < fish.getCollisionRadius()) {
+          fish.takeDamage(10)    
           bullet.destroy()
-          this.options.onHitFish?.(fish.fishData.id, fish.instanceId) // server quyết định kill
+          this.options.onHitFish?.(fish.fishData.id, fish.instanceId)
           break
         }
       }
     }
-
   }
 
-  // ── Drawing ───────────────────────────────────────────────────────────────
 
   private draw() {
     const ctx = this.ctx
     const { width: w, height: h } = this.canvas
 
-    // Background
     const bg = ctx.createLinearGradient(0, 0, 0, h)
-    bg.addColorStop(0, '#010d1f')
-    bg.addColorStop(0.45, '#041630')
-    bg.addColorStop(1, '#062040')
+    bg.addColorStop(0, '#050a15')
+    bg.addColorStop(1, '#0a192f')
     ctx.fillStyle = bg
     ctx.fillRect(0, 0, w, h)
 
-    this.drawCaustics(ctx, w, h)
+    this.drawCyberGrid(ctx, w, h)
     this.drawBubbles(ctx)
-    this.drawSeabed(ctx, w, h)
 
-    // Vẽ cá và đạn qua worldToScreen transformer
     for (const fish of this.fishEntities) fish.draw(ctx, this.worldToScreen, w, h)
     for (const b of this.bullets) b.draw(ctx, this.worldToScreen)
 
@@ -385,19 +337,35 @@ export class GameScene {
     this.drawCrosshair(ctx)
   }
 
-  private drawCaustics(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  private drawCyberGrid(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.save()
-    ctx.globalAlpha = 0.035
-    for (let i = 0; i < 6; i++) {
-      const x = w * (i / 6) + Math.sin(this.bgTime * 0.28 + i * 1.1) * 35
-      const grad = ctx.createLinearGradient(x, 0, x + 35, h * 0.65)
-      grad.addColorStop(0, 'rgba(100,200,255,1)')
-      grad.addColorStop(1, 'rgba(0,50,140,0)')
-      ctx.fillStyle = grad
+    ctx.strokeStyle = 'rgba(34, 211, 238, 0.12)'
+    ctx.lineWidth = 1
+    
+    const cols = 24
+    const rows = 12
+    const cellW = w / cols
+    
+    ctx.beginPath()
+    for (let i = 0; i <= cols; i++) {
+      ctx.moveTo(i * cellW, 0)
+      ctx.lineTo(i * cellW, h)
+    }
+    const scrollOffset = (this.bgTime * 15) % (h / rows)
+    for (let i = -1; i <= rows + 1; i++) {
+      const y = i * (h / rows) + scrollOffset
+      ctx.moveTo(0, y)
+      ctx.lineTo(w, y)
+    }
+    ctx.stroke()
+
+    ctx.globalAlpha = 0.04
+    ctx.fillStyle = '#22d3ee'
+    for (let i = 0; i < 4; i++) {
+      const cx = (w * 0.25 * i) + Math.sin(this.bgTime * 0.5 + i) * 50
+      const cy = h * 0.5 + Math.cos(this.bgTime * 0.3 + i) * 100
       ctx.beginPath()
-      ctx.moveTo(x, 0)
-      ctx.lineTo(x + 18 + Math.sin(this.bgTime * 0.45 + i) * 12, h * 0.65)
-      ctx.lineTo(x + 36, 0)
+      ctx.arc(cx, cy, 180, 0, Math.PI * 2)
       ctx.fill()
     }
     ctx.restore()
@@ -407,67 +375,14 @@ export class GameScene {
     ctx.save()
     for (const b of this.bubbles) {
       const scr = this.worldToScreen(b.x, b.y)
-      ctx.globalAlpha = 0.22
+      ctx.globalAlpha = 0.6
       ctx.beginPath()
-      ctx.arc(scr.x, scr.y, b.r, 0, Math.PI * 2)
-      ctx.strokeStyle = 'rgba(160,230,255,0.9)'
-      ctx.lineWidth = 1
-      ctx.stroke()
-      ctx.globalAlpha = 0.06
-      ctx.fillStyle = 'rgba(160,230,255,1)'
+      ctx.rect(scr.x - b.r, scr.y - b.r, b.r * 2, b.r * 2)
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.8)'
+      ctx.shadowColor = '#22d3ee'
+      ctx.shadowBlur = 4
       ctx.fill()
     }
-    ctx.restore()
-  }
-
-  private drawSeabed(ctx: CanvasRenderingContext2D, w: number, h: number) {
-    // Bottom
-    let sand = ctx.createLinearGradient(0, h - 65, 0, h)
-    sand.addColorStop(0, 'rgba(8,35,75,0)')
-    sand.addColorStop(1, 'rgba(12,45,90,0.85)')
-    ctx.fillStyle = sand
-    ctx.fillRect(0, h - 65, w, 65)
-
-    // Top
-    sand = ctx.createLinearGradient(0, 65, 0, 0)
-    sand.addColorStop(0, 'rgba(8,35,75,0)')
-    sand.addColorStop(1, 'rgba(12,45,90,0.85)')
-    ctx.fillStyle = sand
-    ctx.fillRect(0, 0, w, 65)
-
-    // Left
-    sand = ctx.createLinearGradient(65, 0, 0, 0)
-    sand.addColorStop(0, 'rgba(8,35,75,0)')
-    sand.addColorStop(1, 'rgba(12,45,90,0.85)')
-    ctx.fillStyle = sand
-    ctx.fillRect(0, 0, 65, h)
-
-    // Right
-    sand = ctx.createLinearGradient(w - 65, 0, w, 0)
-    sand.addColorStop(0, 'rgba(8,35,75,0)')
-    sand.addColorStop(1, 'rgba(12,45,90,0.85)')
-    ctx.fillStyle = sand
-    ctx.fillRect(w - 65, 0, 65, h)
-
-    const positions = [0.06, 0.18, 0.42, 0.68, 0.82, 0.94]
-    for (const p of positions) this.drawSeaweed(ctx, w * p, h, 1)
-    for (const p of positions) this.drawSeaweed(ctx, w * p, 0, -1)
-  }
-
-  private drawSeaweed(ctx: CanvasRenderingContext2D, x: number, y: number, dir: number) {
-    ctx.save()
-    ctx.strokeStyle = 'rgba(22,101,52,0.55)'
-    ctx.lineWidth = 4
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-    const segs = 5 + Math.floor(Math.random() * 2)
-    for (let i = 1; i <= segs; i++) {
-      const sway = Math.sin(this.bgTime * 0.75 + x * 0.02 + i * 0.9) * 7 * (i / segs)
-      ctx.lineTo(x + sway, y - i * 20 * dir)
-    }
-    ctx.stroke()
     ctx.restore()
   }
 
@@ -490,77 +405,88 @@ export class GameScene {
   private drawCannon(ctx: CanvasRenderingContext2D) {
     const w = this.canvas.width
     const h = this.canvas.height
-    const barrelLen = 38
-    const barrelW = 13
 
     const drawSingleCannon = (origin: { x: number; y: number }, angle: number, isLocal: boolean) => {
       const scr = this.worldToScreen(origin.x, origin.y)
       const cx = scr.x
       const cy = scr.y
-      let drawAngle = angle
 
       ctx.save()
       ctx.translate(cx, cy)
 
-      ctx.beginPath()
-      ctx.arc(0, 0, 33, 0, Math.PI * 2)
-      ctx.strokeStyle = isLocal
-        ? `rgba(56,189,248,${0.24 + Math.sin(this.bgTime * 2) * 0.08})`
-        : `rgba(192,132,252,${0.18 + Math.sin(this.bgTime * 1.5) * 0.06})`
-      ctx.lineWidth = 5
-      ctx.stroke()
+      const primaryColor = isLocal ? '#22d3ee' : '#f87171'
+      const darkColor = isLocal ? '#0f172a' : '#450a0a'
+      
+      ctx.shadowColor = primaryColor
+      ctx.shadowBlur = 15
 
       ctx.beginPath()
-      ctx.arc(0, 0, 27, 0, Math.PI * 2)
-      const baseGrd = ctx.createRadialGradient(-4, -4, 2, 0, 0, 27)
-      baseGrd.addColorStop(0, '#475569')
-      baseGrd.addColorStop(1, '#1e293b')
-      ctx.fillStyle = baseGrd
+      for(let i=0; i<6; i++) {
+        const a = (Math.PI / 3) * i + (Math.PI / 6)
+        ctx.lineTo(38 * Math.cos(a), 38 * Math.sin(a))
+      }
+      ctx.closePath()
+      ctx.fillStyle = darkColor
       ctx.fill()
-      ctx.strokeStyle = isLocal ? '#38bdf8' : '#c084fc'
+      ctx.strokeStyle = primaryColor
       ctx.lineWidth = 2
       ctx.stroke()
 
-      ctx.rotate(drawAngle)
-      const barrelGrd = ctx.createLinearGradient(0, -barrelW / 2, 0, barrelW / 2)
-      barrelGrd.addColorStop(0, '#64748b')
-      barrelGrd.addColorStop(0.5, '#94a3b8')
-      barrelGrd.addColorStop(1, '#334155')
-      ctx.fillStyle = barrelGrd
-      ctx.strokeStyle = isLocal ? '#38bdf8' : '#c084fc'
-      ctx.lineWidth = 1.5
+      ctx.shadowBlur = 0
+
+      ctx.save()
+      ctx.rotate(angle)
+      
       ctx.beginPath()
-      ctx.rect(2, -barrelW / 2, barrelLen, barrelW)
+      ctx.rect(0, -16, 52, 32)
+      ctx.fillStyle = '#1e293b'
       ctx.fill()
       ctx.stroke()
 
-      ctx.fillStyle = isLocal ? '#38bdf8' : '#c084fc'
-      ctx.fillRect(barrelLen - 2, -barrelW / 2 - 2, 8, barrelW + 4)
+      ctx.beginPath()
+      ctx.rect(12, -10, 48, 5)
+      ctx.rect(12, 5, 48, 5)
+      ctx.fillStyle = primaryColor
+      ctx.shadowBlur = 10
+      ctx.fill()
 
       ctx.restore()
-      ctx.save()
-      ctx.translate(cx, cy)
+
+      ctx.shadowBlur = 0
+      ctx.beginPath()
+      ctx.arc(0, 0, 16, 0, Math.PI * 2)
+      ctx.fillStyle = '#020617'
+      ctx.fill()
+      
       ctx.beginPath()
       ctx.arc(0, 0, 8, 0, Math.PI * 2)
-      ctx.fillStyle = isLocal ? '#38bdf8' : '#c084fc'
+      ctx.fillStyle = primaryColor
+      ctx.shadowBlur = 20
       ctx.fill()
+
+      if (isLocal) {
+        ctx.shadowBlur = 0
+        ctx.font = '900 13px system-ui, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillStyle = '#ffffff'
+        ctx.fillText(this.localBetAmount.toString(), 0, 26)
+      }
+
       ctx.restore()
     }
 
-    // Vẽ các nòng súng khác (Multiplayer)
     for (const [sId, state] of this.seatStates.entries()) {
       if (sId === this.seatId) continue
       const absOrigin = this.getAbsoluteSeatOrigin(sId, w, h)
       drawSingleCannon(absOrigin, this.absoluteAngleToLocal(state.cannonAngle), false)
     }
 
-    // Vẽ nòng súng của bản thân
     const localAbs = this.getAbsoluteSeatOrigin(this.seatId, w, h)
     drawSingleCannon(localAbs, this.absoluteAngleToLocal(this.cannonAngle), true)
   }
 
   private drawCrosshair(ctx: CanvasRenderingContext2D) {
-    // Crosshair luôn vẽ ở vị trí chuột thực tế (screen space)
     const { x, y } = { x: this.mouseX, y: this.mouseY }
     const arm = 11
 
@@ -582,7 +508,6 @@ export class GameScene {
     ctx.restore()
   }
 
-  // ── Cleanup ───────────────────────────────────────────────────────────────
 
   dispose() {
     this.isDisposed = true

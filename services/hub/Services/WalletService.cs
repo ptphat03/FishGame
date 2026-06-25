@@ -59,6 +59,14 @@ public class WalletService : IWalletService
 
     public async Task<WalletResponse> WithdrawAsync(long userId, WithdrawRequest req)
     {
+        var activeSession = await _db.GameSessions
+            .AnyAsync(s => s.UserId == userId && s.Status == "active" && s.StartedAt >= DateTime.UtcNow.AddHours(-1));
+
+        if (activeSession)
+        {
+            throw new InvalidOperationException("Tài khoản đang trong trò chơi. Vui lòng thoát game trước khi rút tiền!");
+        }
+
         await using var tx = await _db.Database.BeginTransactionAsync();
 
         // Chỉ update nếu balance >= amount (ngăn số dư âm, đồng bộ với Go SQL)

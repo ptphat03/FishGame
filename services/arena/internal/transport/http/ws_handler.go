@@ -67,6 +67,7 @@ func (h *WSHandler) ServeWS(c *gin.Context) {
 	}
 
 	client := ws.NewClient(h.hub, conn, userID, h.walletUsecase, h.roomUsecase, h.fishUsecase)
+	h.hub.RegisterClient(client)
 	go client.WritePump()
 	go client.ReadPump()
 }

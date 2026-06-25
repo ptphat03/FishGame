@@ -6,24 +6,26 @@ interface GameCanvasProps {
   room: Room
   fishList: Fish[]
   seatId: number
+  currentBet: number
   onHitFish: (fishId: number, instanceId: string) => void
   onShot: (x: number, y: number, angle: number) => boolean
   onReady?: () => void
-  // Ref để parent gọi hàm confirmFishDeath
   confirmDeathRef: { current: ((instanceId: string) => void) | null }
-  // BỔ SUNG: Ref để parent truyền lệnh sinh cá (spawn_fish) từ Server vào Canvas
   spawnFishRef?: React.MutableRefObject<((payload: any) => void) | null>
-  // BỔ SUNG: Ref để parent truyền event bắn của người khác vào Canvas
   onBroadcastShootRef?: React.MutableRefObject<((payload: any) => void) | null>
-  // BỔ SUNG: Ref để parent truyền event kill broadcast vào Canvas
   onBroadcastKillRef?: React.MutableRefObject<((instanceId: string) => void) | null>
-  // BỔ SUNG: Ref để parent gọi hàm clearBoard
   clearBoardRef?: React.MutableRefObject<(() => void) | null>
 }
 
-export default function GameCanvas({ room, fishList, seatId, onHitFish, onShot, onReady, confirmDeathRef, spawnFishRef, onBroadcastShootRef, onBroadcastKillRef, clearBoardRef }: GameCanvasProps) {
+export default function GameCanvas({ room, fishList, seatId, currentBet, onHitFish, onShot, onReady, confirmDeathRef, spawnFishRef, onBroadcastShootRef, onBroadcastKillRef, clearBoardRef }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameSceneRef = useRef<GameScene | null>(null)
+
+  useEffect(() => {
+    if (gameSceneRef.current) {
+      gameSceneRef.current.setLocalBet(currentBet)
+    }
+  }, [currentBet])
 
   const handleHitFish = useCallback(
     (fishId: number, instanceId: string) => onHitFish(fishId, instanceId),
@@ -48,12 +50,11 @@ export default function GameCanvas({ room, fishList, seatId, onHitFish, onShot, 
         onHitFish: handleHitFish,
         onShot: handleShot,
       })
+      scene.setLocalBet(currentBet)
       gameSceneRef.current = scene
 
-      // Expose các hàm của GameScene ra cho component cha sử dụng
       confirmDeathRef.current = (instanceId) => scene.confirmFishDeath(instanceId)
 
-      // BỔ SUNG: Gắn hàm addFishFromServer ra ngoài
       if (spawnFishRef) {
         spawnFishRef.current = (payload) => scene.addFishFromServer(payload)
       }

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi } from '../../api/admin'
 import Navbar from '../../components/Navbar'
+import { Link } from 'react-router-dom'
+import { ArrowLeft, Plus } from 'lucide-react'
 import type { Fish, FishRequest } from '../../types'
 
 const EMPTY: FishRequest = { name: '', health: 100, reward_multiplier: 2, base_prob: 0.3, speed: 100, asset_path: '' }
@@ -45,30 +47,30 @@ function FishModal({ fish, onClose }: { fish: Fish | null; onClose: () => void }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-xl border border-white/[0.07] bg-gray-800 p-6">
-        <h2 className="text-base font-semibold text-gray-100 mb-5">{isEdit ? 'Sửa cá' : 'Thêm cá mới'}</h2>
+      <div className="neon-card w-full max-w-md p-6 border-blue-500/30">
+        <h2 className="text-base font-semibold text-gray-100 mb-5">{isEdit ? 'Edit Fish' : 'Add New Fish'}</h2>
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(form) }} className="flex flex-col gap-3">
           {mutation.isError && (
             <div className="text-red-400 text-sm p-3 rounded-lg bg-red-500/10 border border-red-500/20">
               {(mutation.error as Error).message}
             </div>
           )}
-          <Field label="Tên" value={form.name} onChange={(v) => set('name', v)} required />
+          <Field label="Name" value={form.name} onChange={(v) => set('name', v)} required />
           <div className="grid grid-cols-2 gap-3">
             <NumField label="HP" value={form.health} onChange={(v) => set('health', v)} min={1} />
             <NumField label="Reward ×" value={form.reward_multiplier} onChange={(v) => set('reward_multiplier', v)} min={1} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <NumField label="Xác suất (0–1)" value={form.base_prob} onChange={(v) => set('base_prob', v)} step={0.001} min={0} max={1} />
-            <NumField label="Tốc độ (px/s)" value={form.speed} onChange={(v) => set('speed', v)} min={10} />
+            <NumField label="Probability (0–1)" value={form.base_prob} onChange={(v) => set('base_prob', v)} step={0.001} min={0} max={1} />
+            <NumField label="Speed (px/s)" value={form.speed} onChange={(v) => set('speed', v)} min={10} />
           </div>
           <Field label="Asset path" value={form.asset_path} onChange={(v) => set('asset_path', v)} />
           <div className="flex gap-3 mt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg border border-white/[0.1] text-gray-400 hover:bg-white/5 transition-all text-sm">
-              Hủy
+              Cancel
             </button>
-            <button type="submit" disabled={mutation.isPending} className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium text-sm transition-all">
-              {mutation.isPending ? 'Đang lưu…' : 'Lưu'}
+            <button type="submit" disabled={mutation.isPending} className="neon-btn flex-1 py-2">
+              {mutation.isPending ? 'Saving…' : 'Save'}
             </button>
           </div>
         </form>
@@ -92,35 +94,45 @@ export default function FishPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
+    <div className="min-h-screen text-gray-100">
       <Navbar />
       <main className="pt-20 px-6 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6 mt-8">
           <div>
-            <h1 className="text-xl font-semibold">Quản lý cá</h1>
-            <p className="text-gray-500 text-sm mt-0.5">{fishes.length} loại cá</p>
+            <h1 className="text-xl font-semibold">Fish Species Management</h1>
+            <p className="text-gray-500 text-sm mt-0.5">{fishes.length} species</p>
           </div>
-          <button
-            onClick={() => setEditing('new')}
-            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
-          >
-            + Thêm cá
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setEditing('new')}
+              className="neon-btn px-4 py-2 gap-1"
+            >
+              <Plus size={16} />
+              Add Fish
+            </button>
+            <Link
+              to="/admin"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/[0.1] text-gray-400 hover:text-gray-200 hover:border-white/20 hover:bg-white/5 text-sm transition-all"
+            >
+              <ArrowLeft size={16} />
+              Back to Dashboard
+            </Link>
+          </div>
         </div>
 
-        <div className="rounded-xl border border-white/[0.07] overflow-hidden">
+        <div className="neon-card">
           <table className="w-full text-sm">
-            <thead className="bg-gray-800 text-gray-400">
+            <thead className="bg-blue-900/20 text-blue-200">
               <tr>
-                <th className="text-left px-4 py-3 font-medium">Tên</th>
+                <th className="text-left px-4 py-3 font-medium">Name</th>
                 <th className="text-right px-4 py-3 font-medium">HP</th>
                 <th className="text-right px-4 py-3 font-medium">Reward ×</th>
-                <th className="text-right px-4 py-3 font-medium">Xác suất</th>
-                <th className="text-right px-4 py-3 font-medium">Tốc độ</th>
+                <th className="text-right px-4 py-3 font-medium">Probability</th>
+                <th className="text-right px-4 py-3 font-medium">Speed</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.05] bg-gray-800/40">
+            <tbody className="divide-y divide-blue-500/10">
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
@@ -133,7 +145,7 @@ export default function FishPage() {
                 ))
               ) : fishes.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-gray-600">Chưa có cá nào</td>
+                  <td colSpan={6} className="text-center py-12 text-gray-600">No fish found</td>
                 </tr>
               ) : (
                 fishes.map((f) => (
@@ -149,14 +161,14 @@ export default function FishPage() {
                           onClick={() => setEditing(f)}
                           className="px-3 py-1 rounded-md text-xs border border-white/[0.1] text-gray-400 hover:border-blue-500/40 hover:text-blue-400 transition-all"
                         >
-                          Sửa
+                          Edit
                         </button>
                         <button
-                          onClick={() => { if (confirm(`Xóa cá "${f.name}"?`)) deleteMutation.mutate(f.id) }}
+                          onClick={() => { if (confirm(`Delete fish "${f.name}"?`)) deleteMutation.mutate(f.id) }}
                           disabled={deleteMutation.isPending}
                           className="px-3 py-1 rounded-md text-xs border border-red-500/20 text-red-400/60 hover:border-red-500/40 hover:text-red-400 transition-all disabled:opacity-40"
                         >
-                          Xóa
+                          Delete
                         </button>
                       </div>
                     </td>

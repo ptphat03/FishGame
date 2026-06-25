@@ -6,19 +6,16 @@ import { authApi } from '../api/auth'
 export default function ProtectedRoute() {
   const { accessToken, setToken } = useAuthStore()
 
-  // Lần đầu mount mà không có token trong memory (reload trang) → thử silent refresh
   const [isInitializing, setIsInitializing] = useState(!accessToken)
 
   useEffect(() => {
-    if (accessToken) return // đã có token, không cần refresh
+    if (accessToken) return
 
     authApi
       .refresh()
       .then((data) => setToken(data.access_token))
-      .catch(() => {}) // refresh thất bại → accessToken vẫn null → redirect login
+      .catch(() => {})
       .finally(() => setIsInitializing(false))
-  // chỉ chạy 1 lần khi mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (isInitializing) {

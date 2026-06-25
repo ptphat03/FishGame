@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 70" width="150" height="70">
+  <defs>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#b45309"/>
+      <stop offset="50%" stop-color="#fde047"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <!-- Tail -->
+  <polygon points="30,35 0,10 15,35 0,60" fill="#b45309" />
+  <!-- Dorsal Fin -->
+  <polygon points="80,25 90,0 110,25" fill="#ca8a04" />
+  <!-- Pectoral Fin -->
+  <polygon points="100,45 80,70 110,55" fill="#ca8a04" />
+  <!-- Body -->
+  <path d="M 25,35 Q 80,5 140,35 Q 80,65 25,35" fill="url(#gold)" />
+  <!-- Tech lines -->
+  <path d="M 60,20 L 60,50" stroke="#fef08a" stroke-width="2" />
+  <path d="M 80,18 L 80,52" stroke="#fef08a" stroke-width="2" />
+  <!-- Eye -->
+  <polygon points="115,28 125,25 120,32" fill="#ef4444" filter="url(#glow)" />
+  <!-- Jaw -->
+  <path d="M 110,45 L 120,40 L 130,48 L 120,50 Z" fill="#fff" />
+</svg>

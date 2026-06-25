@@ -15,7 +15,7 @@ export default function GamePage() {
   const navigate = useNavigate()
   const roomId = Number(roomIdStr)
 
-  const { coins, score, setCurrentRoom, resetGame } = useGameStore()
+  const { setCurrentRoom, resetGame } = useGameStore()
   const { balance, fetchWallet } = useWalletStore()
 
   const [selectedBet, setSelectedBet] = useState<number>(BET_OPTIONS[0])
@@ -62,7 +62,6 @@ export default function GamePage() {
   useEffect(() => {
     fetchWallet()
     return () => setCurrentRoom(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const balanceRef = useRef(balance)
@@ -123,7 +122,7 @@ export default function GamePage() {
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 text-sm font-medium">Invalid room ID</p>
-          <button onClick={() => navigate('/lobby')} className="mt-3 text-xs text-blue-400 underline">Back to Lobby</button>
+          <button onClick={() => navigate('/')} className="mt-3 text-xs text-blue-400 underline">Back to Home</button>
         </div>
       </div>
     )
@@ -135,10 +134,10 @@ export default function GamePage() {
         <div className="text-center">
           <p className="text-red-400 text-sm font-medium mb-4">Failed to load game data</p>
           <button
-            onClick={() => navigate('/lobby')}
+            onClick={() => navigate('/')}
             className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
           >
-            Back to Lobby
+            Back to Home
           </button>
         </div>
       </div>
@@ -152,6 +151,7 @@ export default function GamePage() {
           room={room}
           fishList={fishList}
           seatId={seatId ?? 0}
+          currentBet={selectedBet}
           onShot={handleShot}
           onHitFish={handleHitFish}
           onReady={sendClientReady}
@@ -172,7 +172,7 @@ export default function GamePage() {
         </div>
       )}
 
-      {/* Disconnect overlay */}
+      {}
       {wsStatus === 'disconnected' && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="text-center px-8 py-7 rounded-xl bg-gray-800 border border-white/[0.07] shadow-2xl max-w-sm mx-4">
@@ -182,23 +182,23 @@ export default function GamePage() {
                   d="M18.364 5.636a9 9 0 010 12.728M15.536 8.464a5 5 0 010 7.072M6.343 17.657a9 9 0 010-12.728M8.464 15.536a5 5 0 010-7.072M12 12h.01" />
               </svg>
             </div>
-            <h3 className="text-gray-100 font-semibold mb-1.5">Mất kết nối</h3>
+            <h3 className="text-gray-100 font-semibold mb-1.5">Disconnected</h3>
             <p className="text-gray-400 text-sm mb-5">
-              Kết nối đến server bị gián đoạn. Ván chơi đã được lưu lại.
+              Connection to server interrupted. Your progress has been saved.
             </p>
             <button
-              onClick={() => navigate('/lobby')}
+              onClick={() => navigate('/')}
               className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-colors"
             >
-              Về Lobby
+              Back to Home
             </button>
           </div>
         </div>
       )}
 
-      {/* HUD */}
+      {}
       <div className="absolute inset-0 pointer-events-none">
-        {/* Top bar */}
+        {}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/50 backdrop-blur border border-white/[0.08]">
             <span className="text-white/80 font-medium text-sm">{room?.name ?? '...'}</span>
@@ -215,56 +215,59 @@ export default function GamePage() {
 
           <button
             className="pointer-events-auto flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black/50 backdrop-blur border border-white/[0.08] text-white/70 hover:text-white text-sm transition-colors"
-            onClick={() => navigate('/lobby')}
+            onClick={() => navigate('/')}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Lobby
+            Home
           </button>
         </div>
 
-        {/* Bottom HUD */}
-        <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between px-4 pb-4">
-          {/* Ví */}
-          <div className="flex flex-col items-center gap-1 px-4 py-3 rounded-xl bg-black/50 backdrop-blur border border-white/[0.08]">
-            <span className="text-xs text-white/40 uppercase tracking-wider">Ví</span>
-            <span className="text-amber-400 font-bold text-xl tabular-nums">
-              {balance !== null ? balance.toLocaleString() : '...'}
-            </span>
-          </div>
+        {}
+        {(() => {
+          const isCannonLeft = seatId === 0 || seatId === 3;
+          const isBottom = seatId === 0 || seatId === 1;
 
-          {/* Chọn đạn */}
-          <div className="flex flex-col items-center gap-2 px-4 py-3 rounded-xl bg-black/50 backdrop-blur border border-white/[0.08] pointer-events-auto">
-            <span className="text-xs text-white/40 uppercase tracking-wider">Chọn đạn</span>
-            <div className="flex gap-1.5">
-              {BET_OPTIONS.map((bet) => (
-                <button
-                  key={bet}
-                  onClick={() => setSelectedBet(bet)}
-                  className={`w-11 h-8 rounded-lg text-sm font-medium transition-all ${selectedBet === bet
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white/10 text-white/60 hover:bg-white/15 hover:text-white'
-                    }`}
-                >
-                  {bet}
-                </button>
-              ))}
+          const hudBox = (
+            <div className="bg-slate-900/60 backdrop-blur-md border border-white/15 shadow-lg px-3 py-1.5 rounded-xl flex items-center gap-4 pointer-events-none shrink-0 h-12">
+              <div className={isCannonLeft ? "text-left" : "text-right"}>
+                <div className="text-[9px] text-gray-400 font-bold uppercase">Your Wallet</div>
+                <div className="text-lg font-black text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)] tabular-nums leading-tight">
+                  {balance !== null ? balance.toLocaleString() : '...'}
+                </div>
+              </div>
             </div>
-          </div>
+          );
 
-          {/* Thu nhập */}
-          <div className="flex flex-col items-center gap-1 px-4 py-3 rounded-xl bg-black/50 backdrop-blur border border-white/[0.08]">
-            <span className="text-xs text-white/40 uppercase tracking-wider">Ván này</span>
-            <span className="text-emerald-400 font-bold text-xl tabular-nums">+{coins.toLocaleString()}</span>
-          </div>
+          const yClass = isBottom ? "bottom-6" : "top-6";
+          const xClass = isCannonLeft ? "left-6 flex-row" : "right-6 flex-row-reverse";
 
-          {/* Cá bắn hạ */}
-          <div className="flex flex-col items-center gap-1 px-4 py-3 rounded-xl bg-black/50 backdrop-blur border border-white/[0.08]">
-            <span className="text-xs text-white/40 uppercase tracking-wider">Cá bắn</span>
-            <span className="text-blue-400 font-bold text-xl tabular-nums">{score}</span>
-          </div>
-        </div>
+          return (
+            <div className={`absolute z-10 flex items-center gap-3 ${yClass} ${xClass}`}>
+              <button
+                onClick={() => setSelectedBet(Math.max(10, selectedBet - 10))}
+                className="w-10 h-10 rounded-full bg-slate-800 border border-white/20 text-white font-bold hover:bg-slate-700 pointer-events-auto shadow-md shrink-0 text-xl"
+              >
+                -
+              </button>
+              
+              {}
+              <div className="w-24 h-24 shrink-0 pointer-events-none" />
+
+              <button
+                onClick={() => setSelectedBet(Math.min(100, selectedBet + 10))}
+                className="w-10 h-10 rounded-full bg-blue-600 border border-blue-400 text-white font-bold hover:bg-blue-500 pointer-events-auto shadow-[0_0_15px_rgba(37,99,235,0.5)] shrink-0 text-xl"
+              >
+                +
+              </button>
+
+              {}
+              <div className="w-1 shrink-0" />
+              {hudBox}
+            </div>
+          );
+        })()}
 
         {lastError && (
           <div className="absolute bottom-32 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-red-500/90 backdrop-blur text-white text-sm font-medium shadow-lg pointer-events-none">

@@ -3,7 +3,6 @@ import { useAuthStore } from '../stores/authStore'
 
 const BASE_URL = '/api'
 
-// Routes that must never trigger an auto-refresh attempt
 const AUTH_ROUTES = ['/auth/login', '/auth/register', '/auth/refresh']
 
 export const apiClient = axios.create({
@@ -11,10 +10,9 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // send HttpOnly refresh_token cookie automatically
+  withCredentials: true,
 })
 
-// ── Request interceptor: attach Bearer token ────────────────────────────────
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken
   if (token) {
@@ -23,7 +21,6 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-// ── Refresh queue: hold concurrent 401 requests while refreshing ─────────────
 let isRefreshing = false
 let refreshQueue: Array<{
   resolve: (token: string) => void
@@ -40,7 +37,6 @@ function rejectQueue(err: unknown) {
   refreshQueue = []
 }
 
-// ── Response interceptor: handle 401 with auto-refresh ──────────────────────
 apiClient.interceptors.response.use(
   (res: AxiosResponse) => res,
   async (error: AxiosError<{ error: { code: string; message: string } | null }>) => {
@@ -49,12 +45,10 @@ apiClient.interceptors.response.use(
     const isAuthRoute = AUTH_ROUTES.some((r) => originalRequest?.url?.includes(r))
     const is401 = error.response?.status === 401
 
-    // Attempt token refresh only once per original request
     if (is401 && !isAuthRoute && !originalRequest._retry) {
       originalRequest._retry = true
 
       if (isRefreshing) {
-        // Queue this request until the ongoing refresh finishes
         return new Promise((resolve, reject) => {
           refreshQueue.push({
             resolve: (token) => {
@@ -69,7 +63,6 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        // POST /auth/refresh — cookie is sent automatically (withCredentials)
         const refreshRes = await apiClient.post<{
           data: { access_token: string; access_token_expires_at: number }
           error: null
@@ -94,7 +87,6 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // For all other errors normalise into a plain Error
     const serverMessage = error.response?.data?.error?.message
     const message = serverMessage ?? error.message ?? 'Unknown error'
     return Promise.reject(new Error(message))

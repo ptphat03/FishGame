@@ -2,11 +2,11 @@ import { create } from 'zustand'
 import { walletApi } from '../api/wallet'
 
 interface WalletState {
-  balance: number | null   // null = chưa fetch
+  balance: number | null  
   loading: boolean
   fetchWallet: () => Promise<void>
   setBalance: (balance: number) => void
-  reset: () => void        // gọi khi logout
+  reset: () => void       
   optimisticEarn: (amount: number) => void
   optimisticSpend: (amount: number) => void
 }
@@ -22,7 +22,6 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
       const wallet = await walletApi.getWallet()
       set({ balance: wallet.balance })
     } catch {
-      // lỗi im lặng, giữ giá trị cũ
     } finally {
       set({ loading: false })
     }
@@ -32,7 +31,6 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
 
   reset: () => set({ balance: null, loading: false }),
 
-  // cập nhật UI ngay trước khi server phản hồi
   optimisticEarn: (amount) =>
     set((s) => ({ balance: s.balance !== null ? s.balance + amount : null })),
 
