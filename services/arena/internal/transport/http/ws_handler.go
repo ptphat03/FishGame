@@ -50,24 +50,20 @@ func NewWSHandler(
 }
 
 func (h *WSHandler) RegisterRoutes(router *gin.RouterGroup) {
-	// WSAuthMiddleware đọc token từ ?token= thay vì Authorization header
-	// vì browser WebSocket API không hỗ trợ custom header khi connect
-	router.GET("/ws", middleware.WSAuthMiddleware(h.tokenMaker), h.ServeWS)
+	// Không dùng WSAuthMiddleware nữa vì Client sẽ gửi token qua frame đầu tiên
+	router.GET("/ws", h.ServeWS)
 }
 
 // ServeWS godoc
-// GET /api/v1/ws?token=<access_token>
+// GET /api/v1/ws
 func (h *WSHandler) ServeWS(c *gin.Context) {
-	userID := c.MustGet("user_id").(int64)
-
 	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		// upgrader đã tự ghi response lỗi
 		return
 	}
 
-	client := ws.NewClient(h.hub, conn, userID, h.walletUsecase, h.roomUsecase, h.fishUsecase)
-	h.hub.RegisterClient(client)
+	client := ws.NewClient(h.hub, conn, h.tokenMaker, h.walletUsecase, h.roomUsecase, h.fishUsecase)
 	go client.WritePump()
 	go client.ReadPump()
 }

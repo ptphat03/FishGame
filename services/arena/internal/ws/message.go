@@ -24,6 +24,10 @@ func outMsg(msgType string, payload any) []byte {
 
 // ── Incoming payloads ─────────────────────────────────────────────────────────
 
+type AuthPayload struct {
+	Token string `json:"token"`
+}
+
 type JoinRoomPayload struct {
 	RoomID int64 `json:"room_id"`
 }

@@ -5,6 +5,7 @@ import { useGameStore } from '../stores/gameStore'
 
 
 type WsOutMsg =
+  | { type: 'auth'; payload: { token: string } }
   | { type: 'join_room'; payload: { room_id: number } }
   | { type: 'shoot'; payload: { x: number; y: number; angle: number; bet_amount: number } }
   | { type: 'hit_fish'; payload: { fish_id: number; instance_id: string } }
@@ -167,7 +168,7 @@ export function useGameSocket(roomId: number | null): UseGameSocketReturn {
     roomIdRef.current = roomId
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const url = `${protocol}//${window.location.host}/api/v1/ws?token=${accessToken}`
+    const url = `${protocol}//${window.location.host}/api/v1/ws`
 
     setStatus('connecting')
     const ws = new WebSocket(url)
@@ -175,6 +176,7 @@ export function useGameSocket(roomId: number | null): UseGameSocketReturn {
 
     ws.onopen = () => {
       setStatus('connected')
+      ws.send(JSON.stringify({ type: 'auth', payload: { token: accessToken } }))
       ws.send(JSON.stringify({ type: 'join_room', payload: { room_id: roomId } }))
     }
 

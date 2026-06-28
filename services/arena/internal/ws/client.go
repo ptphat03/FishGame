@@ -11,6 +11,7 @@ import (
 
 	"github.com/ptphat03/Fish-Game/services/game-server/internal/domain"
 	"github.com/ptphat03/Fish-Game/services/game-server/internal/usecase"
+	"github.com/ptphat03/Fish-Game/services/game-server/pkg/utils"
 	gorillaws "github.com/gorilla/websocket"
 )
 
@@ -30,6 +31,9 @@ type Client struct {
 	once sync.Once
 
 	userID int64
+
+	tokenMaker    utils.TokenMaker
+	isAuthenticated bool
 
 	walletUsecase usecase.WalletUsecase
 	roomUsecase   usecase.RoomUsecase
@@ -54,7 +58,7 @@ type Client struct {
 func NewClient(
 	hub *Hub,
 	conn *gorillaws.Conn,
-	userID int64,
+	tokenMaker utils.TokenMaker,
 	walletUC usecase.WalletUsecase,
 	roomUC usecase.RoomUsecase,
 	fishUC usecase.FishUsecase,
@@ -63,7 +67,9 @@ func NewClient(
 		hub:           hub,
 		conn:          conn,
 		send:          make(chan []byte, 512),
-		userID:        userID,
+		userID:        0,
+		tokenMaker:    tokenMaker,
+		isAuthenticated: false,
 		walletUsecase: walletUC,
 		roomUsecase:   roomUC,
 		fishUsecase:   fishUC,
@@ -87,7 +93,9 @@ func (c *Client) ForceDisconnect(reason string) {
 
 func (c *Client) ReadPump() {
 	defer func() {
-		c.hub.UnregisterClient(c)
+		if c.isAuthenticated {
+			c.hub.UnregisterClient(c)
+		}
 		c.endSessionIfActive()
 		if c.roomID != 0 {
 			c.hub.LeaveRoom(c, c.roomID)
@@ -95,6 +103,13 @@ func (c *Client) ReadPump() {
 		c.closeSend()
 		c.conn.Close()
 	}()
+
+	authTimer := time.AfterFunc(5*time.Second, func() {
+		if !c.isAuthenticated {
+			c.ForceDisconnect("Authentication timeout")
+		}
+	})
+	defer authTimer.Stop()
 
 	c.conn.SetReadLimit(maxMsgSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -148,6 +163,21 @@ func (c *Client) handleMessage(raw []byte) {
 		return
 	}
 
+	if !c.isAuthenticated {
+		if env.Type == "auth" {
+			var p AuthPayload
+			if err := json.Unmarshal(env.Payload, &p); err != nil {
+				c.sendError("BAD_REQUEST", "invalid auth payload")
+				c.ForceDisconnect("Invalid auth payload")
+				return
+			}
+			c.handleAuth(p)
+		} else {
+			c.ForceDisconnect("Not authenticated")
+		}
+		return
+	}
+
 	switch env.Type {
 	case "join_room":
 		var p JoinRoomPayload
@@ -184,6 +214,19 @@ func (c *Client) handleMessage(raw []byte) {
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
+
+func (c *Client) handleAuth(p AuthPayload) {
+	claims, err := c.tokenMaker.VerifyAccessToken(p.Token)
+	if err != nil {
+		c.sendError("UNAUTHORIZED", "Invalid token")
+		c.ForceDisconnect("Invalid token")
+		return
+	}
+	
+	c.userID = utils.ToInt64((*claims)["user_id"])
+	c.isAuthenticated = true
+	c.hub.RegisterClient(c)
+}
 
 func (c *Client) handleJoinRoom(p JoinRoomPayload) {
 	if c.sessionID != 0 {
